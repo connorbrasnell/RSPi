@@ -7,8 +7,10 @@ from matplotlib import style
 import matplotlib.pyplot as plt
 import time
 import datetime
+from datetime import date
 import sys
 import MySQLdb as sql
+from dateutil.relativedelta import relativedelta
 
 import tkinter as tk
 from tkinter import ttk
@@ -147,6 +149,7 @@ def startOfDayDB():
     global timePeriodAverage
 
     currentDate = time.strftime('%Y-%m-%d')
+    sixMonthsAgo = date.today() + relativedelta(months=-6)
 
     currentDayInt = datetime.datetime.today().weekday()
     if currentDayInt == 0:
@@ -163,6 +166,16 @@ def startOfDayDB():
         currentDay = 'Saturday'
     elif currentDayInt == 6:
         currentDay = 'Sunday'
+
+    sql0 = """DELETE FROM weekly WHERE todaydate < '%s'""" % (sixMonthsAgo)
+
+    try:
+        cursor.execute(sql0)
+        db.commit()
+    except Exception as e:
+        print(e)
+        print("Rollback")
+        db.rollback()
 
     sql1 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM weekly GROUP BY day"""
 
