@@ -14,6 +14,7 @@ from dateutil.relativedelta import relativedelta
 
 import tkinter as tk
 from tkinter import ttk
+from tkinter import *
 
 db = sql.connect("localhost","RSPiUser","RSComponents","RSPi" )
 cursor = db.cursor()
@@ -22,13 +23,20 @@ currentDay = "Monday"
 currentDate = '1996-02-15'
 dayAverage = [0,0,0,0,0]
 timePeriodAverage = [0,0,0,0,0]
-footfallX = [1,2,3,4,5]
+footfallWeekX = ['Mon','Tue','Wed','Thu','Fri']
+footfallDayX = ['7am-','9am-','11am-','1pm-','3pm-']
+
+footfallGraphChoice = 0
+
+customerCountInt = 0
 
 style.use("ggplot")
 
-fig = plt.figure()
-#plt.subplots_adjust(left=0.025, bottom=0.8, right=0.1, top=0.9, wspace=0.2, hspace=0.2)
+fig = plt.figure(figsize=(0.2,0.2))
 plt.subplots_adjust(bottom=0.05, top=0.91, hspace=0.4)
+
+figFootfall = plt.figure(figsize=(0.2,0.2))
+footfallAxis = figFootfall.add_subplot(1,1,1)
 
 outsideTempAxis = fig.add_subplot(3,1,1)
 insideTempAxis = fig.add_subplot(3,1,2)
@@ -112,6 +120,26 @@ def animateLight(i):
     lightAxis.annotate(currentY, xy=(0.84, 1.05), xycoords='axes fraction')
     lightAxis.plot(xsL,ysL)
 
+def plotWeeklyFootfall():
+
+    footfallAxis.cla()
+    footfallAxis.set_title('Weekly Footfall', fontsize=12)
+    footfallAxis.set_ylabel('Footfall', fontsize=10)
+    footfallAxis.bar(footfallWeekX,dayAverage, 0.5)
+    footfallAxis.set_xticklabels(footfallWeekX)
+
+    figFootfall.canvas.draw()
+
+def plotDailyFootfall():
+
+    footfallAxis.cla()
+    footfallAxis.set_title('Daily Footfall', fontsize=12)
+    footfallAxis.set_ylabel('Footfall', fontsize=10)
+    footfallAxis.bar(footfallWeekX,timePeriodAverage, 0.5)
+    footfallAxis.set_xticklabels(footfallDayX)
+
+    figFootfall.canvas.draw()
+
 def endOfDayDB():
 
     global currentDate
@@ -124,8 +152,6 @@ def endOfDayDB():
     for eachLine in splitData:
         if eachLine != '':
             footfallValues.append(int(eachLine))
-
-    #currentDate = time.strftime('%Y-%m-%d')
 
     try:
         cursor.execute("INSERT INTO weekly(day, todaydate, count) VALUES (%s,%s,%s)", (currentDay, currentDate, footfallValues[0]))
@@ -167,10 +193,12 @@ def startOfDayDB():
     elif currentDayInt == 6:
         currentDay = 'Sunday'
 
-    sql0 = """DELETE FROM weekly WHERE todaydate < '%s'""" % (sixMonthsAgo)
+    sql00 = """DELETE FROM weekly WHERE todaydate < '%s'""" % (sixMonthsAgo)
+    sql01 = """DELETE FROM daily WHERE todaydate < '%s'""" % (sixMonthsAgo)
 
     try:
-        cursor.execute(sql0)
+        cursor.execute(sql00)
+        cursor.execute(sql01)
         db.commit()
     except Exception as e:
         print(e)
@@ -210,6 +238,22 @@ def startOfDayDB():
     print("Day Average: ", dayAverage)
     print("Time Period Average: ", timePeriodAverage)
 
+def updateFootfallGraph(but):
+
+    global footfallGraphChoice
+
+    if but == 0:
+        if footfallGraphChoice == 0:
+            plotWeeklyFootfall()
+        else:
+            plotDailyFootfall()
+    else:
+        if footfallGraphChoice == 0:
+            plotDailyFootfall()
+            footfallGraphChoice = 1
+        else:
+            plotWeeklyFootfall()
+            footfallGraphChoice = 0
 
 class RSPi(tk.Tk):
 
@@ -223,11 +267,11 @@ class RSPi(tk.Tk):
         container.pack(side="top", fill="both", expand = True)
         # Container has 2 columns and 13 rows
 
-        for col in range(2):
-            container.grid_columnconfigure(col, weight=1)
+        container.grid_columnconfigure(0, weight=1, minsize=480)
+        container.grid_columnconfigure(1, weight=1, minsize=720)
 
         for row in range(13):
-            container.grid_rowconfigure(row, weight=1)
+            container.grid_rowconfigure(row, weight=1, minsize=60)
 
         topContainer = tk.Frame(container,bg="skyblue")
         topContainer.grid(column=0,row=0,rowspan=7,sticky='nesw')
@@ -244,23 +288,32 @@ class RSPi(tk.Tk):
         insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
         insertTest.grid(column=0,row=2)
 
-        label = tk.Label(container, text="Today: 43 Customers",bg='orange')
-        label.grid(column=0,row=7,rowspan=1,sticky='nesw')
+        updateFootfall = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
+        updateFootfall.grid(column=0,row=3)
 
-        label = tk.Label(container, text="Footfall Graphs",fg='white',bg='red')
-        label.grid(column=0,row=8,rowspan=5,sticky='nesw')
+        changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
+        changeFootfall.grid(column=0,row=4)
+
+        customerCountLabel = tk.Label(container, text = 'Today: 43 Customers', bg='orange')
+        customerCountLabel.grid(column=0,row=7,rowspan=1,sticky='nesw')
+
+        canvasFootfall = FigureCanvasTkAgg(figFootfall, container)
+        canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',padx=(20,0),pady=(20,20))
 
         canvas = FigureCanvasTkAgg(fig, container)
         canvas.get_tk_widget().grid(column=1,row=0,rowspan=12,sticky='nesw')
 
-        label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='black',font='bold')
+        label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='bold')
         label.grid(column=1,row=12,rowspan=1,sticky='nesw')
 
+startOfDayDB()
 display = RSPi()
 
 aniOutside = animation.FuncAnimation(fig, animateOutside, interval=1000)
 aniInside = animation.FuncAnimation(fig, animateInside, interval=1000)
 aniLight = animation.FuncAnimation(fig, animateLight, interval=1000)
+
+plotWeeklyFootfall()
 
 def on_close():
     db.close()
