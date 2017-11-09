@@ -30,6 +30,12 @@ footfallGraphChoice = 0
 
 customerCountInt = 0
 
+root = tk.Tk()
+root.wm_title("RS Pi")
+
+customerCount = StringVar()
+customerCount.set(str(customerCountInt))
+
 style.use("ggplot")
 
 fig = plt.figure(figsize=(0.2,0.2))
@@ -255,21 +261,15 @@ def updateFootfallGraph(but):
             plotWeeklyFootfall()
             footfallGraphChoice = 0
 
-def increaseCustomerCount(customerCountLabel):
+def increaseCustomerCount():
 
     global customerCountInt
 
     customerCountInt = customerCountInt + 1
     customerCount.set(str(customerCountInt))
 
-    customerCountLabel.update_idletasks()
-
-root = tk.Tk()
-root.wm_title("RS Pi")
-
 container = tk.Frame(root)
 
-#container = tk.Frame(self)
 container.pack(side="top", fill="both", expand = True)
 # Container has 2 columns and 13 rows
 
@@ -282,29 +282,45 @@ for row in range(13):
 topContainer = tk.Frame(container,bg="skyblue")
 topContainer.grid(column=0,row=0,rowspan=7,sticky='nesw')
 
-#label = tk.Label(container, text="Live Traffic Map/Videos",bg='skyblue')
-#label.grid(column=0,row=0,rowspan=7,sticky='nesw')
+topContainer.grid_columnconfigure(0, weight=1)
+
+topContainer.grid_rowconfigure(0,weight=1)
+topContainer.grid_rowconfigure(7,weight=1)
 
 label = tk.Label(topContainer, text="Live Traffic Map/Videos",bg='skyblue')
-label.grid(column=0,row=0)
+label.grid(column=0,row=1)
 
 retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
-retrieveTest.grid(column=0,row=1)
+retrieveTest.grid(column=0,row=2)
 
 insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
-insertTest.grid(column=0,row=2)
+insertTest.grid(column=0,row=3)
 
 updateFootfall = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
-updateFootfall.grid(column=0,row=3)
+updateFootfall.grid(column=0,row=4)
 
 changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
-changeFootfall.grid(column=0,row=4)
+changeFootfall.grid(column=0,row=5)
 
-customerCountLabel = tk.Label(container, text='Customer Count', bg='orange')
-customerCountLabel.grid(column=0,row=7,rowspan=1,sticky='nesw')
+addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
+addCustomer.grid(column=0,row=6)
 
-addCustomer = tk.Button(topContainer, text = 'Add Customer', command = lambda: increaseCustomerCount(customerCountLabel))
-addCustomer.grid(column=0,row=5)
+customersContainer = tk.Frame(container,bg='orange')
+customersContainer.grid(column=0,row=7,rowspan=1,sticky='nesw')
+
+customersContainer.grid_rowconfigure(0, weight=1)
+
+customersContainer.grid_columnconfigure(0,weight=1)
+customersContainer.grid_columnconfigure(4,weight=1)
+
+customerCountLabel1 = tk.Label(customersContainer, text = 'Today:', bg='orange', font='"Sans Serif" 14 bold')
+customerCountLabel1.grid(column=1,row=0,rowspan=1,sticky='nesw')
+
+customerCountLabel2 = tk.Label(customersContainer, textvariable=customerCount, bg='orange')
+customerCountLabel2.grid(column=2,row=0,rowspan=1,sticky='nesw')
+
+customerCountLabel3 = tk.Label(customersContainer, text = 'customers', bg='orange')
+customerCountLabel3.grid(column=3,row=0,rowspan=1,sticky='nesw')
 
 canvasFootfall = FigureCanvasTkAgg(figFootfall, container)
 canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',padx=(20,0),pady=(20,20))

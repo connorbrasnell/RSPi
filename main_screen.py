@@ -30,6 +30,12 @@ footfallGraphChoice = 0
 
 customerCountInt = 0
 
+root = tk.Tk()
+root.wm_title("RS Pi")
+
+customerCount = StringVar()
+customerCount.set(str(customerCountInt))
+
 style.use("ggplot")
 
 fig = plt.figure(figsize=(0.2,0.2))
@@ -255,59 +261,77 @@ def updateFootfallGraph(but):
             plotWeeklyFootfall()
             footfallGraphChoice = 0
 
-class RSPi(tk.Tk):
+def increaseCustomerCount():
 
-    def __init__(self, *args, **kwargs):
+    global customerCountInt
 
-        tk.Tk.__init__(self, *args, **kwargs)
+    customerCountInt = customerCountInt + 1
+    customerCount.set(str(customerCountInt))
 
-        tk.Tk.wm_title(self, "RS Pi")
+container = tk.Frame(root)
 
-        container = tk.Frame(self)
-        container.pack(side="top", fill="both", expand = True)
-        # Container has 2 columns and 13 rows
+container.pack(side="top", fill="both", expand = True)
+# Container has 2 columns and 13 rows
 
-        container.grid_columnconfigure(0, weight=1, minsize=480)
-        container.grid_columnconfigure(1, weight=1, minsize=720)
+container.grid_columnconfigure(0, weight=1, minsize=480)
+container.grid_columnconfigure(1, weight=1, minsize=720)
 
-        for row in range(13):
-            container.grid_rowconfigure(row, weight=1, minsize=60)
+for row in range(13):
+    container.grid_rowconfigure(row, weight=1, minsize=60)
 
-        topContainer = tk.Frame(container,bg="skyblue")
-        topContainer.grid(column=0,row=0,rowspan=7,sticky='nesw')
+topContainer = tk.Frame(container,bg="skyblue")
+topContainer.grid(column=0,row=0,rowspan=7,sticky='nesw')
 
-        #label = tk.Label(container, text="Live Traffic Map/Videos",bg='skyblue')
-        #label.grid(column=0,row=0,rowspan=7,sticky='nesw')
+topContainer.grid_columnconfigure(0, weight=1)
 
-        label = tk.Label(topContainer, text="Live Traffic Map/Videos",bg='skyblue')
-        label.grid(column=0,row=0)
+topContainer.grid_rowconfigure(0,weight=1)
+topContainer.grid_rowconfigure(7,weight=1)
 
-        retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
-        retrieveTest.grid(column=0,row=1)
+label = tk.Label(topContainer, text="Live Traffic Map/Videos",bg='skyblue')
+label.grid(column=0,row=1)
 
-        insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
-        insertTest.grid(column=0,row=2)
+retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
+retrieveTest.grid(column=0,row=2)
 
-        updateFootfall = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
-        updateFootfall.grid(column=0,row=3)
+insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
+insertTest.grid(column=0,row=3)
 
-        changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
-        changeFootfall.grid(column=0,row=4)
+updateFootfall = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
+updateFootfall.grid(column=0,row=4)
 
-        customerCountLabel = tk.Label(container, text = 'Today: 43 Customers', bg='orange')
-        customerCountLabel.grid(column=0,row=7,rowspan=1,sticky='nesw')
+changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
+changeFootfall.grid(column=0,row=5)
 
-        canvasFootfall = FigureCanvasTkAgg(figFootfall, container)
-        canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',padx=(20,0),pady=(20,20))
+addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
+addCustomer.grid(column=0,row=6)
 
-        canvas = FigureCanvasTkAgg(fig, container)
-        canvas.get_tk_widget().grid(column=1,row=0,rowspan=12,sticky='nesw')
+customersContainer = tk.Frame(container,bg='orange')
+customersContainer.grid(column=0,row=7,rowspan=1,sticky='nesw')
 
-        label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='bold')
-        label.grid(column=1,row=12,rowspan=1,sticky='nesw')
+customersContainer.grid_rowconfigure(0, weight=1)
+
+customersContainer.grid_columnconfigure(0,weight=1)
+customersContainer.grid_columnconfigure(4,weight=1)
+
+customerCountLabel1 = tk.Label(customersContainer, text = 'Today:', bg='orange', font='"Sans Serif" 14 bold')
+customerCountLabel1.grid(column=1,row=0,rowspan=1,sticky='nesw')
+
+customerCountLabel2 = tk.Label(customersContainer, textvariable=customerCount, bg='orange')
+customerCountLabel2.grid(column=2,row=0,rowspan=1,sticky='nesw')
+
+customerCountLabel3 = tk.Label(customersContainer, text = 'customers', bg='orange')
+customerCountLabel3.grid(column=3,row=0,rowspan=1,sticky='nesw')
+
+canvasFootfall = FigureCanvasTkAgg(figFootfall, container)
+canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',padx=(20,0),pady=(20,20))
+
+canvas = FigureCanvasTkAgg(fig, container)
+canvas.get_tk_widget().grid(column=1,row=0,rowspan=12,sticky='nesw')
+
+label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='bold')
+label.grid(column=1,row=12,rowspan=1,sticky='nesw')
 
 startOfDayDB()
-display = RSPi()
 
 aniOutside = animation.FuncAnimation(fig, animateOutside, interval=1000)
 aniInside = animation.FuncAnimation(fig, animateInside, interval=1000)
@@ -317,9 +341,9 @@ plotWeeklyFootfall()
 
 def on_close():
     db.close()
-    display.destroy()
+    root.destroy()
     sys.exit()
 
-display.protocol("WM_DELETE_WINDOW",  on_close)
+root.protocol("WM_DELETE_WINDOW",  on_close)
 
-display.mainloop()
+root.mainloop()
