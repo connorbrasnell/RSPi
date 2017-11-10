@@ -28,7 +28,12 @@ footfallDayX = ['7am-','9am-','11am-','1pm-','3pm-']
 
 footfallGraphChoice = 0
 
-customerCountInt = 0
+customerCountInt = 0 # Counts the total amount of customers in a day
+period1Count = 0
+period2Count = 0
+period3Count = 0
+period4Count = 0
+period5Count = 0
 
 root = tk.Tk()
 root.wm_title("RS Pi")
@@ -155,9 +160,12 @@ def endOfDayDB():
 
     footfallValues = []
 
-    for eachLine in splitData:
-        if eachLine != '':
-            footfallValues.append(int(eachLine))
+    footfallValues.append(int(splitData[0]))
+    footfallValues.append(int(splitData[1]))
+    footfallValues.append(int(splitData[2]))
+    footfallValues.append(int(splitData[3]))
+    footfallValues.append(int(splitData[4]))
+    footfallValues.append(int(splitData[5]))
 
     try:
         cursor.execute("INSERT INTO weekly(day, todaydate, count) VALUES (%s,%s,%s)", (currentDay, currentDate, footfallValues[0]))
@@ -241,9 +249,6 @@ def startOfDayDB():
         print("Rollback")
         db.rollback()
 
-    print("Day Average: ", dayAverage)
-    print("Time Period Average: ", timePeriodAverage)
-
 def updateFootfallGraph(but):
 
     global footfallGraphChoice
@@ -264,9 +269,30 @@ def updateFootfallGraph(but):
 def increaseCustomerCount():
 
     global customerCountInt
+    global period1Count
+    global period2Count
+    global period3Count
+    global period4Count
+    global period5Count
 
     customerCountInt = customerCountInt + 1
     customerCount.set(str(customerCountInt))
+
+    baseTime = datetime.datetime.now().replace(hour=7, minute=0, second=0)
+    currentTime = datetime.datetime.now()
+
+    difference = ((currentTime - baseTime).total_seconds()) / 60
+
+    if difference < 120:
+        period1Count = period1Count + 1
+    elif difference < 240:
+        period2Count = period2Count + 1
+    elif difference < 360:
+        period3Count = period3Count + 1
+    elif difference < 480:
+        period4Count = period4Count + 1
+    elif difference < 660:
+        period5Count = period5Count + 1
 
 container = tk.Frame(root)
 
