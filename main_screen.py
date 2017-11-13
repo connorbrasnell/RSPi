@@ -24,8 +24,9 @@ currentDay = "Monday"
 currentDate = '1996-02-15'
 dayAverage = [0,0,0,0,0]
 timePeriodAverage = [0,0,0,0,0]
-footfallWeekX = ['Mon','Tue','Wed','Thu','Fri']
-footfallDayX = ['7am-','9am-','11am-','1pm-','3pm-']
+footfallWeekX = ['','Mon','Tue','Wed','Thu','Fri']
+xAxisCoords = [1,2,3,4,5]
+footfallDayX = ['','7am-','9am-','11am-','1pm-','3pm-']
 
 footfallGraphChoice = 0
 
@@ -135,17 +136,18 @@ def plotWeeklyFootfall():
     footfallAxis.cla()
     footfallAxis.set_title('Weekly Footfall', fontsize=12)
     footfallAxis.set_ylabel('Footfall', fontsize=10)
-    footfallAxis.bar(footfallWeekX,dayAverage, 0.5)
+    footfallAxis.bar(xAxisCoords,dayAverage, 0.5,align="center")
     footfallAxis.set_xticklabels(footfallWeekX)
 
     figFootfall.canvas.draw()
+
 
 def plotDailyFootfall():
 
     footfallAxis.cla()
     footfallAxis.set_title('Daily Footfall', fontsize=12)
     footfallAxis.set_ylabel('Footfall', fontsize=10)
-    footfallAxis.bar(footfallWeekX,timePeriodAverage, 0.5)
+    footfallAxis.bar(xAxisCoords,timePeriodAverage, 0.5,align="center")
     footfallAxis.set_xticklabels(footfallDayX)
 
     figFootfall.canvas.draw()
@@ -297,6 +299,36 @@ def calculateCurrentDay(day):
 
     return currentDay
 
+def endOfDayDB():
+
+    global currentDate
+
+    data = open("daysFootfall.txt","r").read()
+    splitData = data.split('\n')
+
+    footfallValues = []
+
+    footfallValues.append(int(splitData[0]))
+    footfallValues.append(int(splitData[1]))
+    footfallValues.append(int(splitData[2]))
+    footfallValues.append(int(splitData[3]))
+    footfallValues.append(int(splitData[4]))
+    footfallValues.append(int(splitData[5]))
+
+    try:
+        cursor.execute("INSERT INTO weekly(day, todaydate, count) VALUES (%s,%s,%s)", (currentDay, currentDate, footfallValues[0]))
+        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 1, footfallValues[1]))
+        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 2, footfallValues[2]))
+        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 3, footfallValues[3]))
+        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 4, footfallValues[4]))
+        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 5, footfallValues[5]))
+
+        db.commit()
+    except Exception as e:
+        print(e)
+        print("Rollback")
+        db.rollback()
+
 def startOfDayDB():
 
     global currentDate
@@ -321,35 +353,53 @@ def startOfDayDB():
         print("Rollback")
         db.rollback()
 
-    sql1 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM weekly GROUP BY day"""
+    sql1 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM daily WHERE day='%s' AND timeperiod=1""" % (currentDay)
+    sql2 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM daily WHERE day='%s' AND timeperiod=2""" % (currentDay)
+    sql3 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM daily WHERE day='%s' AND timeperiod=3""" % (currentDay)
+    sql4 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM daily WHERE day='%s' AND timeperiod=4""" % (currentDay)
+    sql5 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM daily WHERE day='%s' AND timeperiod=5""" % (currentDay)
 
-    sql2 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM daily WHERE day='%s' GROUP BY timeperiod""" % (currentDay)
+    sql6 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM weekly WHERE day='Monday'"""
+    sql7 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM weekly WHERE day='Tuesday'"""
+    sql8 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM weekly WHERE day='Wednesday'"""
+    sql9 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM weekly WHERE day='Thursday'"""
+    sql10 = """SELECT CAST(AVG(count) AS UNSIGNED) FROM weekly WHERE day='Friday'"""
 
     try:
 
         cursor.execute(sql1)
-        results = cursor.fetchall()
-
-        dayAverage[0] = results[0][0]
-        dayAverage[1] = results[1][0]
-        dayAverage[2] = results[2][0]
-        dayAverage[3] = results[3][0]
-        dayAverage[4] = results[4][0]
-
+        timePeriodAverage[0] = cursor.fetchall()[0][0]
         cursor.execute(sql2)
-        results = cursor.fetchall()
+        timePeriodAverage[1] = cursor.fetchall()[0][0]
+        cursor.execute(sql3)
+        timePeriodAverage[2] = cursor.fetchall()[0][0]
+        cursor.execute(sql4)
+        timePeriodAverage[3] = cursor.fetchall()[0][0]
+        cursor.execute(sql5)
+        timePeriodAverage[4] = cursor.fetchall()[0][0]
 
-        timePeriodAverage[0] = results[0][0]
-        timePeriodAverage[1] = results[1][0]
-        timePeriodAverage[2] = results[2][0]
-        timePeriodAverage[3] = results[3][0]
-        timePeriodAverage[4] = results[4][0]
+        cursor.execute(sql6)
+        dayAverage[0] = cursor.fetchall()[0][0]
+        cursor.execute(sql7)
+        dayAverage[1] = cursor.fetchall()[0][0]
+        cursor.execute(sql8)
+        dayAverage[2] = cursor.fetchall()[0][0]
+        cursor.execute(sql9)
+        dayAverage[3] = cursor.fetchall()[0][0]
+        cursor.execute(sql10)
+        dayAverage[4] = cursor.fetchall()[0][0]
 
         db.commit()
     except Exception as e:
         print(e)
         print("Rollback")
         db.rollback()
+
+    for i in range(5):
+        if timePeriodAverage[i] == None:
+            timePeriodAverage[i] = 0
+        if dayAverage[i] == None:
+            dayAverage[i] = 0
 
 def updateFootfallGraph(but):
 
@@ -392,7 +442,7 @@ def increaseCustomerCount():
     elif difference < 660:
         timePeriodCount[4] = timePeriodCount[4] + 1
 
-container = tk.Frame(root)
+container = tk.Frame(root, background='white')
 
 container.pack(side="top", fill="both", expand = True)
 # Container has 2 columns and 13 rows
@@ -417,17 +467,17 @@ label.grid(column=0,row=1)
 retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
 retrieveTest.grid(column=0,row=2)
 
-#insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
-#insertTest.grid(column=0,row=3)
+insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
+insertTest.grid(column=0,row=3)
 
 updateFootfallButton = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
-updateFootfallButton.grid(column=0,row=3)
+updateFootfallButton.grid(column=0,row=4)
 
 changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
-changeFootfall.grid(column=0,row=4)
+changeFootfall.grid(column=0,row=5)
 
 addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
-addCustomer.grid(column=0,row=5)
+addCustomer.grid(column=0,row=6)
 
 #updateFootfallFunc = tk.Button(topContainer, text = 'Update Func Footfall', command = updateFootfall)
 #updateFootfallFunc.grid(column=0,row=6)
@@ -451,9 +501,11 @@ customerCountLabel3.grid(column=3,row=0,rowspan=1,sticky='nesw')
 
 canvasFootfall = FigureCanvasTkAgg(figFootfall, container)
 canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',padx=(20,0),pady=(20,20))
+canvasFootfall.get_tk_widget().configure(background='white',highlightcolor='white',highlightbackground='white')
 
 canvas = FigureCanvasTkAgg(fig, container)
 canvas.get_tk_widget().grid(column=1,row=0,rowspan=12,sticky='nesw')
+canvas.get_tk_widget().configure(background='white',highlightcolor='white',highlightbackground='white')
 
 label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='bold')
 label.grid(column=1,row=12,rowspan=1,sticky='nesw')
