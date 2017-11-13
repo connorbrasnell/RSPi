@@ -11,6 +11,7 @@ from datetime import date
 import sys
 import MySQLdb as sql
 from dateutil.relativedelta import relativedelta
+import threading
 
 import tkinter as tk
 from tkinter import ttk
@@ -29,11 +30,9 @@ footfallDayX = ['7am-','9am-','11am-','1pm-','3pm-']
 footfallGraphChoice = 0
 
 customerCountInt = 0 # Counts the total amount of customers in a day
-period1Count = 0
-period2Count = 0
-period3Count = 0
-period4Count = 0
-period5Count = 0
+timePeriodCount = [0,0,0,0,0]
+
+threadTimer = threading.Event()
 
 root = tk.Tk()
 root.wm_title("RS Pi")
@@ -151,47 +150,136 @@ def plotDailyFootfall():
 
     figFootfall.canvas.draw()
 
-def endOfDayDB():
+def updateFootfall():
 
-    global currentDate
+    global customerCountInt
+    global timePeriodCount
+
+    # - Check if date in text file matches the current date
+    # - If the date matches
+    #     - If variables < text file
+    #         - Add variables and text file values, update text file and variables with that number
+    #     - If variables >= text file
+    #         - Set text file values to variable values
+    # - If the date does not match
+    #     - Add the variable values to the text file values
+    #     - Write those values to the database with the date from the text file
+    #     - Reset the variable values, the text file values and the date to the current date on the text file
+    #     - Call startOfDay()
 
     data = open("daysFootfall.txt","r").read()
     splitData = data.split('\n')
 
-    footfallValues = []
+    textFileValues = []
 
-    footfallValues.append(int(splitData[0]))
-    footfallValues.append(int(splitData[1]))
-    footfallValues.append(int(splitData[2]))
-    footfallValues.append(int(splitData[3]))
-    footfallValues.append(int(splitData[4]))
-    footfallValues.append(int(splitData[5]))
+    textFileValues.append(int(splitData[0]))
+    textFileValues.append(int(splitData[1]))
+    textFileValues.append(int(splitData[2]))
+    textFileValues.append(int(splitData[3]))
+    textFileValues.append(int(splitData[4]))
+    textFileValues.append(int(splitData[5]))
+    textFileValues.append(splitData[6])
 
-    try:
-        cursor.execute("INSERT INTO weekly(day, todaydate, count) VALUES (%s,%s,%s)", (currentDay, currentDate, footfallValues[0]))
-        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 1, footfallValues[1]))
-        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 2, footfallValues[2]))
-        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 3, footfallValues[3]))
-        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 4, footfallValues[4]))
-        cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (currentDay, currentDate, 5, footfallValues[5]))
+    textFileDate = splitData[6]
 
-        db.commit()
-    except Exception as e:
-        print(e)
-        print("Rollback")
-        db.rollback()
+    if currentDate == textFileDate:
+        if customerCountInt < textFileValues[0]:
 
-def startOfDayDB():
+            combined = textFileValues[0] + customerCountInt
+            textFileValues[0] = combined
+            customerCountInt = combined
 
-    global currentDate
-    global currentDay
-    global dayAverage
-    global timePeriodAverage
+            customerCount.set(str(customerCountInt))
 
-    currentDate = time.strftime('%Y-%m-%d')
-    sixMonthsAgo = date.today() + relativedelta(months=-6)
+            for i in range(len(textFileValues)-2):
+                combined = textFileValues[i+1] + timePeriodCount[i]
+                textFileValues[i+1] = combined
+                timePeriodCount[i] = combined
 
-    currentDayInt = datetime.datetime.today().weekday()
+            for i in range(len(textFileValues)-1):
+                textFileValues[i] = str(textFileValues[i])
+
+            output = open('daysFootfall.txt', 'w').close()
+            output = open('daysFootfall.txt', 'w')
+            output.write('\n'.join(textFileValues))
+            output.close()
+
+        elif customerCountInt > textFileValues[0]:
+
+            replaceTextFileValues = []
+
+            replaceTextFileValues.append(str(customerCountInt))
+            replaceTextFileValues.append(str(timePeriodCount[0]))
+            replaceTextFileValues.append(str(timePeriodCount[1]))
+            replaceTextFileValues.append(str(timePeriodCount[2]))
+            replaceTextFileValues.append(str(timePeriodCount[3]))
+            replaceTextFileValues.append(str(timePeriodCount[4]))
+            replaceTextFileValues.append(currentDate)
+
+            output = open('daysFootfall.txt', 'w').close()
+            output = open('daysFootfall.txt', 'w')
+            output.write('\n'.join(replaceTextFileValues))
+            output.close()
+
+    else:
+
+        combined = textFileValues[0] + customerCountInt
+        textFileValues[0] = combined
+        customerCountInt = combined
+
+        customerCount.set(str(customerCountInt))
+
+        for i in range(len(textFileValues)-2):
+            combined = textFileValues[i+1] + timePeriodCount[i]
+            textFileValues[i+1] = combined
+            timePeriodCount[i] = combined
+
+        customerCountInt = 0
+        customerCount.set(str(customerCountInt))
+
+        for i in range(len(timePeriodCount)):
+            timePeriodCount[i] = 0
+
+        replaceTextFileValues = []
+
+        replaceTextFileValues.append(str(customerCountInt))
+        replaceTextFileValues.append(str(timePeriodCount[0]))
+        replaceTextFileValues.append(str(timePeriodCount[1]))
+        replaceTextFileValues.append(str(timePeriodCount[2]))
+        replaceTextFileValues.append(str(timePeriodCount[3]))
+        replaceTextFileValues.append(str(timePeriodCount[4]))
+        replaceTextFileValues.append(currentDate)
+
+        output = open('daysFootfall.txt', 'w').close()
+        output = open('daysFootfall.txt', 'w')
+        output.write('\n'.join(replaceTextFileValues))
+        output.close()
+
+        yesterdayDay = calculateCurrentDay(datetime.datetime.strptime(textFileDate,'%Y-%m-%d'))
+
+        try:
+            cursor.execute("INSERT INTO weekly(day, todaydate, count) VALUES (%s,%s,%s)", (yesterdayDay, textFileDate, textFileValues[0]))
+            cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (yesterdayDay, textFileDate, 1, textFileValues[1]))
+            cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (yesterdayDay, textFileDate, 2, textFileValues[2]))
+            cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (yesterdayDay, textFileDate, 3, textFileValues[3]))
+            cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (yesterdayDay, textFileDate, 4, textFileValues[4]))
+            cursor.execute("INSERT INTO daily(day, todaydate, timeperiod, count) VALUES (%s,%s,%s,%s)", (yesterdayDay, textFileDate, 5, textFileValues[5]))
+
+            db.commit()
+        except Exception as e:
+            print(e)
+            print("Rollback")
+            db.rollback()
+
+        startOfDayDB()
+
+    root.after(900000, updateFootfall)
+    #root.after(5000, updateFootfall)
+
+def calculateCurrentDay(day):
+
+    currentDayInt = day.weekday()
+
     if currentDayInt == 0:
         currentDay = 'Monday'
     elif currentDayInt == 1:
@@ -206,6 +294,20 @@ def startOfDayDB():
         currentDay = 'Saturday'
     elif currentDayInt == 6:
         currentDay = 'Sunday'
+
+    return currentDay
+
+def startOfDayDB():
+
+    global currentDate
+    global currentDay
+    global dayAverage
+    global timePeriodAverage
+
+    currentDate = time.strftime('%Y-%m-%d')
+    sixMonthsAgo = date.today() + relativedelta(months=-6)
+
+    currentDay = calculateCurrentDay(datetime.datetime.strptime(currentDate,'%Y-%m-%d'))
 
     sql00 = """DELETE FROM weekly WHERE todaydate < '%s'""" % (sixMonthsAgo)
     sql01 = """DELETE FROM daily WHERE todaydate < '%s'""" % (sixMonthsAgo)
@@ -269,11 +371,7 @@ def updateFootfallGraph(but):
 def increaseCustomerCount():
 
     global customerCountInt
-    global period1Count
-    global period2Count
-    global period3Count
-    global period4Count
-    global period5Count
+    global timePeriodCount
 
     customerCountInt = customerCountInt + 1
     customerCount.set(str(customerCountInt))
@@ -284,15 +382,15 @@ def increaseCustomerCount():
     difference = ((currentTime - baseTime).total_seconds()) / 60
 
     if difference < 120:
-        period1Count = period1Count + 1
+        timePeriodCount[0] = timePeriodCount[0] + 1
     elif difference < 240:
-        period2Count = period2Count + 1
+        timePeriodCount[1] = timePeriodCount[1] + 1
     elif difference < 360:
-        period3Count = period3Count + 1
+        timePeriodCount[2] = timePeriodCount[2] + 1
     elif difference < 480:
-        period4Count = period4Count + 1
+        timePeriodCount[3] = timePeriodCount[3] + 1
     elif difference < 660:
-        period5Count = period5Count + 1
+        timePeriodCount[4] = timePeriodCount[4] + 1
 
 container = tk.Frame(root)
 
@@ -319,17 +417,20 @@ label.grid(column=0,row=1)
 retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
 retrieveTest.grid(column=0,row=2)
 
-insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
-insertTest.grid(column=0,row=3)
+#insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
+#insertTest.grid(column=0,row=3)
 
-updateFootfall = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
-updateFootfall.grid(column=0,row=4)
+updateFootfallButton = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
+updateFootfallButton.grid(column=0,row=3)
 
 changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
-changeFootfall.grid(column=0,row=5)
+changeFootfall.grid(column=0,row=4)
 
 addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
-addCustomer.grid(column=0,row=6)
+addCustomer.grid(column=0,row=5)
+
+#updateFootfallFunc = tk.Button(topContainer, text = 'Update Func Footfall', command = updateFootfall)
+#updateFootfallFunc.grid(column=0,row=6)
 
 customersContainer = tk.Frame(container,bg='orange')
 customersContainer.grid(column=0,row=7,rowspan=1,sticky='nesw')
@@ -358,6 +459,7 @@ label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",f
 label.grid(column=1,row=12,rowspan=1,sticky='nesw')
 
 startOfDayDB()
+updateFootfall()
 
 aniOutside = animation.FuncAnimation(fig, animateOutside, interval=1000)
 aniInside = animation.FuncAnimation(fig, animateInside, interval=1000)
