@@ -564,21 +564,24 @@ def getLiveFootfall():
         conn,address = s.accept()
         print("Connected to: ", address[0] + ":" + str(address[1]))
 
-        while appClose == False:
+        if address[0] != '192.168.1.143':
+            sock.close()
+        else:
+            while appClose == False:
 
-            try:
-                data = conn.recv(1)
-                data = data.decode('utf-8')
-                if data == '': # Means the connection had closed
-                    conn.close()
-                    print("Disconnect")
+                try:
+                    data = conn.recv(1)
+                    data = data.decode('utf-8')
+                    if data == '': # Means the connection had closed
+                        conn.close()
+                        print("Disconnect")
+                        break
+                    if data == "1":
+                        increaseCustomerCount()
+                except socket.error as msg:
+                    print("Error when trying to receive")
+                    print(msg)
                     break
-                if data == "1":
-                    increaseCustomerCount()
-            except socket.error as msg:
-                print("Error when trying to receive")
-                print(msg)
-                break
 
 
 # Container has 2 columns and 13 rows
