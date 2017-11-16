@@ -12,13 +12,25 @@ import sys
 import MySQLdb as sql
 from dateutil.relativedelta import relativedelta
 import threading
+import socket
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter import *
 
+# Connect to the database that holds all the historical footfall data
 db = sql.connect("localhost","RSPiUser","RSComponents","RSPi" )
 cursor = db.cursor()
+
+# Paramaters to set up a socket that listens to the footfall counter Pi
+host = ''
+port = 4564
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+print("Socket Created")
+socketError = False
+
+appClose = False # Used by second thread to know when the program has been closed
 
 currentDay = "Monday"
 currentDate = '1996-02-15'
@@ -28,44 +40,54 @@ footfallWeekX = ['','Mon','Tue','Wed','Thu','Fri']
 xAxisCoords = [1,2,3,4,5]
 footfallDayX = ['','7am-','9am-','11am-','1pm-','3pm-']
 
-footfallGraphChoice = 0
+footfallGraphChoice = 0 # Decides which footfall graph to switch to
 
 customerCountInt = 0 # Counts the total amount of customers in a day
 timePeriodCount = [0,0,0,0,0]
 
-threadTimer = threading.Event()
+titleFont = {'fontname':'DejaVu Sans'} # Default Mac Python font
 
+# Set up the Tkinter GUI
 root = tk.Tk()
 root.wm_title("RS Pi")
 
+# Variables used to update the customer count label
 customerCount = StringVar()
 customerCount.set(str(customerCountInt))
 
 style.use("ggplot")
 
+# Temperate/Light graph setup
 fig = plt.figure(figsize=(0.2,0.2))
 plt.subplots_adjust(bottom=0.05, top=0.91, hspace=0.4)
 
+# Footfall graph setup
 figFootfall = plt.figure(figsize=(0.2,0.2))
 footfallAxis = figFootfall.add_subplot(1,1,1)
 
+# Individual temperature/light graphs being added to the figure
 outsideTempAxis = fig.add_subplot(3,1,1)
 insideTempAxis = fig.add_subplot(3,1,2)
 lightAxis = fig.add_subplot(3,1,3)
 
+# Hide the x axis of all the temperature/light graphs
 outsideTempAxis.xaxis.set_visible(False)
 insideTempAxis.xaxis.set_visible(False)
 lightAxis.xaxis.set_visible(False)
 
 def animateOutside(i):
+    """
+    Function called to update the Outside Temperature graph
+    """
     data = open("outsideTemp.txt","r").read()
     splitData = data.split('\n')
 
     xsO = []
     ysO = []
 
-    currentY = 0
+    currentY = 0 # Stores the current temperature
 
+    # For each line in the text file, add the x and y values into two arrays
     for eachLine in splitData:
         if len(eachLine) > 1:
             x,y = eachLine.split(',')
@@ -73,25 +95,32 @@ def animateOutside(i):
             ysO.append(int(y))
             currentY = y
 
-    currentY = currentY + '\N{DEGREE SIGN}C'
+    currentY = currentY + '\N{DEGREE SIGN}C' # Update the current temperature
 
+    # Clear the graph
     outsideTempAxis.cla()
 
-    outsideTempAxis.set_title('Outside Temperature', fontsize=12)
+    # Set the titles and labels
+    outsideTempAxis.set_title('Outside Temperature', fontsize=20, **titleFont)
     outsideTempAxis.set_ylabel('Degrees (\N{DEGREE SIGN}C)', fontsize=10)
-    outsideTempAxis.annotate(currentY, xy=(0.92, 1.05), xycoords='axes fraction')
+    outsideTempAxis.annotate(currentY, xy=(0.955, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
 
-    outsideTempAxis.plot(xsO,ysO)
+    # Plot the graph with the updated points
+    outsideTempAxis.plot(xsO,ysO,'r')
 
 def animateInside(i):
+    """
+    Function called to update the Inside Temperature graph
+    """
     data = open("insideTemp.txt","r").read()
     splitData = data.split('\n')
 
     xsI = []
     ysI = []
 
-    currentY = 0
+    currentY = 0 # Stores the current temperature
 
+    # For each line in the text file, add the x and y values into two arrays
     for eachLine in splitData:
         if len(eachLine) > 1:
             x,y = eachLine.split(',')
@@ -99,23 +128,32 @@ def animateInside(i):
             ysI.append(int(y))
             currentY = y
 
-    currentY = currentY + '\N{DEGREE SIGN}C'
+    currentY = currentY + '\N{DEGREE SIGN}C' # Update the current temperature
 
+    # Clear the graph
     insideTempAxis.cla()
-    insideTempAxis.set_title('Inside Temperature', fontsize=12)
+
+    # Set the titles and labels
+    insideTempAxis.set_title('Inside Temperature', fontsize=20, **titleFont)
     insideTempAxis.set_ylabel('Degrees (\N{DEGREE SIGN}C)', fontsize=10)
-    insideTempAxis.annotate(currentY, xy=(0.92, 1.05), xycoords='axes fraction')
-    insideTempAxis.plot(xsI,ysI)
+    insideTempAxis.annotate(currentY, xy=(0.955, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
+
+    # Plot the graph with the updated points
+    insideTempAxis.plot(xsI,ysI,'r')
 
 def animateLight(i):
+    """
+    Function called to update the Light graph
+    """
     data = open("lightLevel.txt","r").read()
     splitData = data.split('\n')
 
     xsL = []
     ysL = []
 
-    currentY = 0
+    currentY = 0 # Stores the current light level
 
+    # For each line in the text file, add the x and y values into the two arrays
     for eachLine in splitData:
         if len(eachLine) > 1:
             x,y = eachLine.split(',')
@@ -123,20 +161,25 @@ def animateLight(i):
             ysL.append(int(y))
             currentY = y
 
-    currentY = currentY + ' Lux'
+    currentY = currentY + ' Lux' # Update the current light level
 
+    # Clear the graph
     lightAxis.cla()
-    lightAxis.set_title('Light Level', fontsize=12)
+
+    # Set the titles and labels
+    lightAxis.set_title('Light Level', fontsize=20, **titleFont)
     lightAxis.set_ylabel('Lux', fontsize=10)
-    lightAxis.annotate(currentY, xy=(0.84, 1.05), xycoords='axes fraction')
-    lightAxis.plot(xsL,ysL)
+    lightAxis.annotate(currentY, xy=(0.91, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
+
+    # Plot the graph with the updated points
+    lightAxis.plot(xsL,ysL,'r')
 
 def plotWeeklyFootfall():
 
     footfallAxis.cla()
-    footfallAxis.set_title('Weekly Footfall', fontsize=12)
+    footfallAxis.set_title('Weekly Footfall', fontsize=20, **titleFont)
     footfallAxis.set_ylabel('Footfall', fontsize=10)
-    footfallAxis.bar(xAxisCoords,dayAverage, 0.5,align="center")
+    footfallAxis.bar(xAxisCoords,dayAverage, 0.5,color=['red'],align="center")
     footfallAxis.set_xticklabels(footfallWeekX)
 
     figFootfall.canvas.draw()
@@ -145,9 +188,9 @@ def plotWeeklyFootfall():
 def plotDailyFootfall():
 
     footfallAxis.cla()
-    footfallAxis.set_title('Daily Footfall', fontsize=12)
+    footfallAxis.set_title('Daily Footfall', fontsize=20, **titleFont)
     footfallAxis.set_ylabel('Footfall', fontsize=10)
-    footfallAxis.bar(xAxisCoords,timePeriodAverage, 0.5,align="center")
+    footfallAxis.bar(xAxisCoords,timePeriodAverage, 0.5,color=['red'],align="center")
     footfallAxis.set_xticklabels(footfallDayX)
 
     figFootfall.canvas.draw()
@@ -442,6 +485,47 @@ def increaseCustomerCount():
     elif difference < 660:
         timePeriodCount[4] = timePeriodCount[4] + 1
 
+def setupServer():
+
+    global socketError
+    
+    # Set up server
+    try:
+        s.bind((host,port))
+    except socket.error as msg:
+        socketError = True
+        print("Error when trying to bind")
+        print(msg)
+        
+    print("Binding Successful")
+    
+
+def getLiveFootfall():
+
+    global s
+
+    while appClose == False:
+        s.listen(1)
+        conn,address = s.accept()
+        print("Connected to: ", address[0] + ":" + str(address[1]))
+
+        while appClose == False:
+
+            try:
+                data = conn.recv(1)
+                data = data.decode('utf-8')
+                if data == '':
+                    conn.close()
+                    print("Disconnect")
+                    break
+                if data == "1":
+                    increaseCustomerCount()
+            except socket.error as msg:
+                print("Error when trying to receive")
+                print(msg)
+                break
+                
+
 container = tk.Frame(root, background='white')
 
 container.pack(side="top", fill="both", expand = True)
@@ -453,7 +537,7 @@ container.grid_columnconfigure(1, weight=1, minsize=720)
 for row in range(13):
     container.grid_rowconfigure(row, weight=1, minsize=60)
 
-topContainer = tk.Frame(container,bg="skyblue")
+topContainer = tk.Frame(container,bg="white")
 topContainer.grid(column=0,row=0,rowspan=7,sticky='nesw')
 
 topContainer.grid_columnconfigure(0, weight=1)
@@ -461,7 +545,7 @@ topContainer.grid_columnconfigure(0, weight=1)
 topContainer.grid_rowconfigure(0,weight=1)
 topContainer.grid_rowconfigure(7,weight=1)
 
-label = tk.Label(topContainer, text="Live Traffic Map/Videos",bg='skyblue')
+label = tk.Label(topContainer, text="Live Traffic Map/Videos",bg='white')
 label.grid(column=0,row=1)
 
 retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
@@ -482,7 +566,7 @@ addCustomer.grid(column=0,row=6)
 #updateFootfallFunc = tk.Button(topContainer, text = 'Update Func Footfall', command = updateFootfall)
 #updateFootfallFunc.grid(column=0,row=6)
 
-customersContainer = tk.Frame(container,bg='orange')
+customersContainer = tk.Frame(container,bg='#482D60')
 customersContainer.grid(column=0,row=7,rowspan=1,sticky='nesw')
 
 customersContainer.grid_rowconfigure(0, weight=1)
@@ -490,24 +574,25 @@ customersContainer.grid_rowconfigure(0, weight=1)
 customersContainer.grid_columnconfigure(0,weight=1)
 customersContainer.grid_columnconfigure(4,weight=1)
 
-customerCountLabel1 = tk.Label(customersContainer, text = 'Today:', bg='orange', font='"Sans Serif" 14 bold')
+customerCountLabel1 = tk.Label(customersContainer, text = 'Today:', fg='white', bg='#482D60', font='"DejaVu Sans" 14 bold')
 customerCountLabel1.grid(column=1,row=0,rowspan=1,sticky='nesw')
 
-customerCountLabel2 = tk.Label(customersContainer, textvariable=customerCount, bg='orange')
+customerCountLabel2 = tk.Label(customersContainer, textvariable=customerCount, fg='white', bg='#482D60', font='"DejaVu Sans" 14')
 customerCountLabel2.grid(column=2,row=0,rowspan=1,sticky='nesw')
 
-customerCountLabel3 = tk.Label(customersContainer, text = 'customers', bg='orange')
+customerCountLabel3 = tk.Label(customersContainer, text = 'customers', fg='white', bg='#482D60', font='"DejaVu Sans" 14')
 customerCountLabel3.grid(column=3,row=0,rowspan=1,sticky='nesw')
 
 canvasFootfall = FigureCanvasTkAgg(figFootfall, container)
-canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',padx=(20,0),pady=(20,20))
+#canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',padx=(20,0),pady=(20,20))
+canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',pady=(20,0))
 canvasFootfall.get_tk_widget().configure(background='white',highlightcolor='white',highlightbackground='white')
 
 canvas = FigureCanvasTkAgg(fig, container)
 canvas.get_tk_widget().grid(column=1,row=0,rowspan=12,sticky='nesw')
 canvas.get_tk_widget().configure(background='white',highlightcolor='white',highlightbackground='white')
 
-label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='bold')
+label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='"DejaVu Sans" 12 bold')
 label.grid(column=1,row=12,rowspan=1,sticky='nesw')
 
 startOfDayDB()
@@ -519,7 +604,18 @@ aniLight = animation.FuncAnimation(fig, animateLight, interval=1000)
 
 plotWeeklyFootfall()
 
+setupServer()
+t = threading.Thread(target = getLiveFootfall)
+t.start()
+
+
 def on_close():
+    if socketError == False:
+        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host,port))
+    s.shutdown(1)
+    print("Closing Socket")
+    s.close()
+    appClose = True
     db.close()
     root.destroy()
     sys.exit()
