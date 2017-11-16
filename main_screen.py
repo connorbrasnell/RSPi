@@ -175,42 +175,63 @@ def animateLight(i):
     lightAxis.plot(xsL,ysL,'r')
 
 def plotWeeklyFootfall():
+    """
+    Plots the weekly historical footfall graph
+    """
 
+    # Clear the graph
     footfallAxis.cla()
+
+    # Set the titles and labels
     footfallAxis.set_title('Weekly Footfall', fontsize=20, **titleFont)
     footfallAxis.set_ylabel('Footfall', fontsize=10)
+
+    # Plot the graph, specifying that it should be a bar graph
     footfallAxis.bar(xAxisCoords,dayAverage, 0.5,color=['red'],align="center")
     footfallAxis.set_xticklabels(footfallWeekX)
 
+    # Draw the graph on the screen
     figFootfall.canvas.draw()
 
 
 def plotDailyFootfall():
+    """
+    Plots the daily historical footfall graph
+    """
 
+    # Clear the graph
     footfallAxis.cla()
+
+    # Set the titles and labels
     footfallAxis.set_title('Daily Footfall', fontsize=20, **titleFont)
     footfallAxis.set_ylabel('Footfall', fontsize=10)
+
+    # Plot the graph, specifying that it should be a bar graph
     footfallAxis.bar(xAxisCoords,timePeriodAverage, 0.5,color=['red'],align="center")
     footfallAxis.set_xticklabels(footfallDayX)
 
+    # Draw the graph on the screen
     figFootfall.canvas.draw()
 
 def updateFootfall():
+    """
+    Update the footfall information in the variables/text file/database
+
+    - Check if date in text file matches the current date
+    - If the date matches
+        - If variables < text file
+            - Add variables and text file values, update text file and variables with that number
+        - If variables >= text file
+            - Set text file values to variable values
+    - If the date does not match
+        - Add the variable values to the text file values
+        - Write those values to the database with the date from the text file
+        - Reset the variable values, the text file values and the date to the current date on the text file
+        - Call startOfDay()
+    """
 
     global customerCountInt
     global timePeriodCount
-
-    # - Check if date in text file matches the current date
-    # - If the date matches
-    #     - If variables < text file
-    #         - Add variables and text file values, update text file and variables with that number
-    #     - If variables >= text file
-    #         - Set text file values to variable values
-    # - If the date does not match
-    #     - Add the variable values to the text file values
-    #     - Write those values to the database with the date from the text file
-    #     - Reset the variable values, the text file values and the date to the current date on the text file
-    #     - Call startOfDay()
 
     data = open("data_files/daysFootfall.txt","r").read()
     splitData = data.split('\n')
@@ -227,6 +248,7 @@ def updateFootfall():
 
     textFileDate = splitData[6]
 
+    # Check the logic in the function comment
     if currentDate == textFileDate:
         if customerCountInt < textFileValues[0]:
 
@@ -312,16 +334,20 @@ def updateFootfall():
 
             db.commit()
         except Exception as e:
+            # Problem with the queries, keep it atomic and roll back any changes
             print(e)
             print("Rollback")
             db.rollback()
 
         startOfDayDB()
 
-    root.after(900000, updateFootfall)
+    root.after(900000, updateFootfall) # Call the function every 15 minutes
     #root.after(5000, updateFootfall)
 
 def calculateCurrentDay(day):
+    """
+    Given a date, calculate the str day
+    """
 
     currentDayInt = day.weekday()
 
@@ -343,6 +369,11 @@ def calculateCurrentDay(day):
     return currentDay
 
 def endOfDayDB():
+    """
+    Commit the current status of the text file to the database
+
+    *** Testing purposes only
+    """
 
     global currentDate
 
@@ -373,6 +404,16 @@ def endOfDayDB():
         db.rollback()
 
 def startOfDayDB():
+    """
+    Called every time the Pi starts up, and called at the end of updateFootfall, every 15 minutes
+
+    - Finds current date
+    - Finds date 6 months 6 months ago
+    - Removes all enties in the database from more than 6 months ago
+    - Find the averages for all the time periods for the current day
+    - Find the averages for all the days
+    - Put these values in the variables stored in the application
+    """
 
     global currentDate
     global currentDay
@@ -445,6 +486,9 @@ def startOfDayDB():
             dayAverage[i] = 0
 
 def updateFootfallGraph(but):
+    """
+    Depending on the button pressed, update the current footfall graph or switch to the other graph
+    """
 
     global footfallGraphChoice
 
@@ -462,6 +506,11 @@ def updateFootfallGraph(but):
             footfallGraphChoice = 0
 
 def increaseCustomerCount():
+    """
+    - Increase the customer count variable
+    - Increase the corrosponding time period variable
+    - Update the customer count label on the GUI
+    """
 
     global customerCountInt
     global timePeriodCount
@@ -486,6 +535,9 @@ def increaseCustomerCount():
         timePeriodCount[4] = timePeriodCount[4] + 1
 
 def setupServer():
+    """
+    Set up the server for the footfall Pi to connect to
+    """
 
     global socketError
 
@@ -501,6 +553,9 @@ def setupServer():
 
 
 def getLiveFootfall():
+    """
+    Seperate thread to listen to the open socket for data from the footfall Pi
+    """
 
     global s
 
@@ -514,7 +569,7 @@ def getLiveFootfall():
             try:
                 data = conn.recv(1)
                 data = data.decode('utf-8')
-                if data == '':
+                if data == '': # Means the connection had closed
                     conn.close()
                     print("Disconnect")
                     break
@@ -526,11 +581,11 @@ def getLiveFootfall():
                 break
 
 
-container = tk.Frame(root, background='white')
-
-container.pack(side="top", fill="both", expand = True)
 # Container has 2 columns and 13 rows
+container = tk.Frame(root, background='white')
+container.pack(side="top", fill="both", expand = True)
 
+# Set the minimum dimensions of the rows and columns
 container.grid_columnconfigure(0, weight=1, minsize=480)
 container.grid_columnconfigure(1, weight=1, minsize=720)
 
@@ -563,9 +618,6 @@ changeFootfall.grid(column=0,row=5)
 addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
 addCustomer.grid(column=0,row=6)
 
-#updateFootfallFunc = tk.Button(topContainer, text = 'Update Func Footfall', command = updateFootfall)
-#updateFootfallFunc.grid(column=0,row=6)
-
 customersContainer = tk.Frame(container,bg='#482D60')
 customersContainer.grid(column=0,row=7,rowspan=1,sticky='nesw')
 
@@ -584,7 +636,6 @@ customerCountLabel3 = tk.Label(customersContainer, text = 'customers', fg='white
 customerCountLabel3.grid(column=3,row=0,rowspan=1,sticky='nesw')
 
 canvasFootfall = FigureCanvasTkAgg(figFootfall, container)
-#canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',padx=(20,0),pady=(20,20))
 canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',pady=(20,0))
 canvasFootfall.get_tk_widget().configure(background='white',highlightcolor='white',highlightbackground='white')
 
@@ -595,21 +646,37 @@ canvas.get_tk_widget().configure(background='white',highlightcolor='white',highl
 label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='"DejaVu Sans" 12 bold')
 label.grid(column=1,row=12,rowspan=1,sticky='nesw')
 
+# Initially run startOfDay to set up, then start the updateFootfall loop
 startOfDayDB()
 updateFootfall()
 
+# Set the temperature/light graphs to be updated every second
 aniOutside = animation.FuncAnimation(fig, animateOutside, interval=1000)
 aniInside = animation.FuncAnimation(fig, animateInside, interval=1000)
 aniLight = animation.FuncAnimation(fig, animateLight, interval=1000)
 
+# Start with the weekly footfall graph
 plotWeeklyFootfall()
 
+# Set up the server to listen for a connection from the footfall Pi
 setupServer()
+
+# Set up the seperate thread to read data from the footfall Pi
 t = threading.Thread(target = getLiveFootfall)
 t.start()
 
 
 def on_close():
+    """
+    Clean everything up when the 'x' button is pressed
+
+    - Close the socket
+    - Stop the second thread
+    - Close the connection to the database
+    - Close the tkinter instance
+    - Close the program
+    """
+
     if socketError == False:
         socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host,port))
     s.shutdown(1)
@@ -622,4 +689,5 @@ def on_close():
 
 root.protocol("WM_DELETE_WINDOW",  on_close)
 
+# Start the main program loop
 root.mainloop()
