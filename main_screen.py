@@ -79,7 +79,7 @@ def animateOutside(i):
     """
     Function called to update the Outside Temperature graph
     """
-    data = open("outsideTemp.txt","r").read()
+    data = open("data_files/outsideTemp.txt","r").read()
     splitData = data.split('\n')
 
     xsO = []
@@ -112,7 +112,7 @@ def animateInside(i):
     """
     Function called to update the Inside Temperature graph
     """
-    data = open("insideTemp.txt","r").read()
+    data = open("data_files/insideTemp.txt","r").read()
     splitData = data.split('\n')
 
     xsI = []
@@ -145,7 +145,7 @@ def animateLight(i):
     """
     Function called to update the Light graph
     """
-    data = open("lightLevel.txt","r").read()
+    data = open("data_files/lightLevel.txt","r").read()
     splitData = data.split('\n')
 
     xsL = []
@@ -212,7 +212,7 @@ def updateFootfall():
     #     - Reset the variable values, the text file values and the date to the current date on the text file
     #     - Call startOfDay()
 
-    data = open("daysFootfall.txt","r").read()
+    data = open("data_files/daysFootfall.txt","r").read()
     splitData = data.split('\n')
 
     textFileValues = []
@@ -244,8 +244,8 @@ def updateFootfall():
             for i in range(len(textFileValues)-1):
                 textFileValues[i] = str(textFileValues[i])
 
-            output = open('daysFootfall.txt', 'w').close()
-            output = open('daysFootfall.txt', 'w')
+            output = open('data_files/daysFootfall.txt', 'w').close()
+            output = open('data_files/daysFootfall.txt', 'w')
             output.write('\n'.join(textFileValues))
             output.close()
 
@@ -261,8 +261,8 @@ def updateFootfall():
             replaceTextFileValues.append(str(timePeriodCount[4]))
             replaceTextFileValues.append(currentDate)
 
-            output = open('daysFootfall.txt', 'w').close()
-            output = open('daysFootfall.txt', 'w')
+            output = open('data_files/daysFootfall.txt', 'w').close()
+            output = open('data_files/daysFootfall.txt', 'w')
             output.write('\n'.join(replaceTextFileValues))
             output.close()
 
@@ -295,8 +295,8 @@ def updateFootfall():
         replaceTextFileValues.append(str(timePeriodCount[4]))
         replaceTextFileValues.append(currentDate)
 
-        output = open('daysFootfall.txt', 'w').close()
-        output = open('daysFootfall.txt', 'w')
+        output = open('data_files/daysFootfall.txt', 'w').close()
+        output = open('data_files/daysFootfall.txt', 'w')
         output.write('\n'.join(replaceTextFileValues))
         output.close()
 
@@ -346,7 +346,7 @@ def endOfDayDB():
 
     global currentDate
 
-    data = open("daysFootfall.txt","r").read()
+    data = open("data_files/daysFootfall.txt","r").read()
     splitData = data.split('\n')
 
     footfallValues = []
@@ -488,7 +488,7 @@ def increaseCustomerCount():
 def setupServer():
 
     global socketError
-    
+
     # Set up server
     try:
         s.bind((host,port))
@@ -496,9 +496,9 @@ def setupServer():
         socketError = True
         print("Error when trying to bind")
         print(msg)
-        
+
     print("Binding Successful")
-    
+
 
 def getLiveFootfall():
 
@@ -524,7 +524,7 @@ def getLiveFootfall():
                 print("Error when trying to receive")
                 print(msg)
                 break
-                
+
 
 container = tk.Frame(root, background='white')
 
