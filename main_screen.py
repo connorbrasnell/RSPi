@@ -13,6 +13,7 @@ import MySQLdb as sql
 from dateutil.relativedelta import relativedelta
 import threading
 import socket
+import select
 
 import tkinter as tk
 from tkinter import ttk
@@ -30,7 +31,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 print("Socket Created")
 socketError = False
 conn = 0
-waiting_on_data = False
+connected = False
 
 appClose = False # Used by second thread to know when the program has been closed
 
@@ -545,13 +546,15 @@ def setupServer():
 
     # Set up server
     try:
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((host,port))
     except socket.error as msg:
         socketError = True
         print("Error when trying to bind")
         print(msg)
-
-    print("Binding Successful")
+    else:
+        print("Binding Successful")
+        socketError = False
 
 
 def getLiveFootfall():
@@ -565,7 +568,7 @@ def getLiveFootfall():
 
     while appClose == False:
 
-        waiting_on_data = False
+        connected = False
         
         print("Start listening")
         s.listen(1)
@@ -581,24 +584,27 @@ def getLiveFootfall():
             print("Wrong IP address connected")
             conn.close()
         else:
+            connected = True
+            conn.settimeout(2)
+            
             while appClose == False:
-
+                
                 try:
-                    waiting_on_data = True
                     data = conn.recv(1)
+                except socket.timeout as msg:    
+                    continue
+                except socket.error as msg:
+                    waiting_on_data = False
+                    print("Error when trying to receive: " + msg)
+                else:
                     data = data.decode('utf-8')
                     if data == '': # Means the connection had closed
                         conn.close()
                         print("Disconnect")
+                        conn.settimeout(None)
                         break
                     if data == "1":
                         increaseCustomerCount()
-
-                except socket.error as msg:
-                    waiting_on_data = False
-                    print("Error when trying to receive")
-                    print(msg)
-                    break
 
 
 # Container has 2 columns and 13 rows
@@ -697,12 +703,15 @@ def on_close():
     - Close the program
     """
 
+    global appClose
+
     appClose = True
     if socketError == False:
-        socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host,port))
-    if waiting_on_data == True:
-        print("Client still connected when closing")
-        conn.close()
+        if connected == False:
+            socket.socket(socket.AF_INET, socket.SOCK_STREAM).connect((host,port))
+        elif connected == True:
+            print("Client still connected when closing")
+            conn.close()
     s.shutdown(1)
     print("Closing Socket")
     s.close()
