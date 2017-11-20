@@ -14,6 +14,7 @@ from dateutil.relativedelta import relativedelta
 import threading
 import socket
 import select
+import smbus
 
 import tkinter as tk
 from tkinter import ttk
@@ -32,6 +33,23 @@ print("Socket Created")
 socketError = False
 conn = 0
 connected = False
+
+# Get I2C bus
+bus = smbus.SMBus(1)
+
+# TSL2561 address, 0x39(57)
+# Select control register, 0x00(00) with command register, 0x80(128)
+#		0x03(03)	Power ON mode
+bus.write_byte_data(0x39, 0x00 | 0x80, 0x03)
+# TSL2561 address, 0x39(57)
+# Select timing register, 0x01(01) with command register, 0x80(128)
+#		0x02(02)	Nominal integration time = 402ms
+bus.write_byte_data(0x39, 0x01 | 0x80, 0x02)
+
+time.sleep(0.5)
+
+lightValueList = []
+lightX = []
 
 appClose = False # Used by second thread to know when the program has been closed
 
@@ -148,23 +166,33 @@ def animateLight(i):
     """
     Function called to update the Light graph
     """
-    data = open("data_files/lightLevel.txt","r").read()
-    splitData = data.split('\n')
 
-    xsL = []
-    ysL = []
+    global lightValueList
+    global lightX
+    
+    #data = open("data_files/lightLevel.txt","r").read()
+    #splitData = data.split('\n')
 
-    currentY = 0 # Stores the current light level
+    #xsL = []
+    #ysL = []
 
-    # For each line in the text file, add the x and y values into the two arrays
-    for eachLine in splitData:
-        if len(eachLine) > 1:
-            x,y = eachLine.split(',')
-            xsL.append(int(x))
-            ysL.append(int(y))
-            currentY = y
+    # Read data back from 0x0C(12) with command register, 0x80(128), 2 bytes
+    # ch0 LSB, ch0 MSB
+    data = bus.read_i2c_block_data(0x39, 0x0C | 0x80, 2)
 
-    currentY = currentY + ' Lux' # Update the current light level
+    # Read data back from 0x0E(14) with command register, 0x80(128), 2 bytes
+    # ch1 LSB, ch1 MSB
+    data1 = bus.read_i2c_block_data(0x39, 0x0E | 0x80, 2)
+
+    # Convert the data
+    currentLightLevel = data[1] * 256 + data[0]
+
+    if len(lightValueList) >= 100:
+        lightValueList = lightValueList[10:]
+        
+    lightValueList.append(currentLightLevel)
+    
+    currentLightLevel = str(currentLightLevel) + ' Lux' # Update the current light level
 
     # Clear the graph
     lightAxis.cla()
@@ -172,10 +200,38 @@ def animateLight(i):
     # Set the titles and labels
     lightAxis.set_title('Light Level', fontsize=20, **titleFont)
     lightAxis.set_ylabel('Lux', fontsize=10)
-    lightAxis.annotate(currentY, xy=(0.91, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
+    lightAxis.annotate(currentLightLevel, xy=(0.91, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
 
     # Plot the graph with the updated points
-    lightAxis.plot(xsL,ysL,'r')
+    #lightAxis.plot(xsL,ysL,'r')
+    lightAxis.plot(lightValueList,'r')
+
+    lightAxis.set_ylim(ymin=0,ymax=(max(lightValueList)+200))
+
+
+
+##    currentY = 0 # Stores the current light level
+##
+##    # For each line in the text file, add the x and y values into the two arrays
+##    for eachLine in splitData:
+##        if len(eachLine) > 1:
+##            x,y = eachLine.split(',')
+##            xsL.append(int(x))
+##            ysL.append(int(y))
+##            currentY = y
+##
+##    currentY = currentY + ' Lux' # Update the current light level
+##
+##    # Clear the graph
+##    lightAxis.cla()
+##
+##    # Set the titles and labels
+##    lightAxis.set_title('Light Level', fontsize=20, **titleFont)
+##    lightAxis.set_ylabel('Lux', fontsize=10)
+##    lightAxis.annotate(currentY, xy=(0.91, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
+##
+##    # Plot the graph with the updated points
+##    lightAxis.plot(xsL,ysL,'r')
 
 def plotWeeklyFootfall():
     """
