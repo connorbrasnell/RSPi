@@ -32,8 +32,28 @@ temp_sensor = '/sys/bus/w1/devices/28-0000095cb34f/w1_slave'
 
 GPIO.setmode(GPIO.BCM)
 
-GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-GPIO.setup(27, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+WEEK_BUTT = 17
+DAY_BUTT = 27
+GPIO.setup(WEEK_BUTT, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(DAY_BUTT, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+INC_LIGHT_BUTT = 11
+DEC_LIGHT_BUTT = 9
+GPIO.setup(INC_LIGHT_BUTT, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(DEC_LIGHT_BUTT, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+
+LED1 = 5
+LED2 = 6
+LED3 = 13
+LED4 = 19
+LED5 = 26
+GPIO.setup(LED1, GPIO.OUT)
+GPIO.setup(LED2, GPIO.OUT)
+GPIO.setup(LED3, GPIO.OUT)
+GPIO.setup(LED4, GPIO.OUT)
+GPIO.setup(LED5, GPIO.OUT)
+
+lightCount = 0
 
 # Connect to the database that holds all the historical footfall data
 db = sql.connect("localhost","RSPiUser","RSComponents","RSPi" )
@@ -697,14 +717,56 @@ def getLiveFootfall():
                     if data == "1":
                         increaseCustomerCount()
 
-def changeFootfallWeekly(PIR_PIN):
-    if GPIO.input(17) == 0:
+def changeFootfallWeekly(PIN):
+    if GPIO.input(WEEK_BUTT) == 0:
         updateFootfallGraph(0)
 
-def changeFootfallDaily(PIR_PIN):
-    if GPIO.input(27) == 0:
+def changeFootfallDaily(PIN):
+    if GPIO.input(DAY_BUTT) == 0:
         updateFootfallGraph(1)
-    
+
+def increaseLight(PIN):
+
+    global lightCount
+
+    print("Increase Light from: " + str(lightCount))
+
+    if GPIO.input(INC_LIGHT_BUTT) == 0:
+        if lightCount < 5:
+            lightCount = lightCount + 1
+
+            if lightCount == 1:
+                GPIO.output(LED1,GPIO.HIGH)
+            elif lightCount == 2:
+                GPIO.output(LED2,GPIO.HIGH)
+            elif lightCount == 3:
+                GPIO.output(LED3,GPIO.HIGH)
+            elif lightCount == 4:
+                GPIO.output(LED4,GPIO.HIGH)
+            elif lightCount == 5:
+                GPIO.output(LED5,GPIO.HIGH)
+
+def decreaseLight(PIN):
+
+    global lightCount
+
+    print("Decrease Light from: " + str(lightCount))
+
+    if GPIO.input(DEC_LIGHT_BUTT) == 0:
+        if lightCount > 0:
+            lightCount = lightCount - 1
+
+            if lightCount == 0:
+                GPIO.output(LED1,GPIO.LOW)
+            elif lightCount == 1:
+                GPIO.output(LED2,GPIO.LOW)
+            elif lightCount == 2:
+                GPIO.output(LED3,GPIO.LOW)
+            elif lightCount == 3:
+                GPIO.output(LED4,GPIO.LOW)
+            elif lightCount == 4:
+                GPIO.output(LED5,GPIO.LOW)     
+
 # Container has 2 columns and 13 rows
 container = tk.Frame(root, background='white')
 container.pack(side="top", fill="both", expand = True)
@@ -778,8 +840,11 @@ label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",f
 label.grid(column=1,row=12,rowspan=1,sticky='nesw')
 
 # Set up the button interrupts
-GPIO.add_event_detect(17,GPIO.FALLING, callback = changeFootfallWeekly)
-GPIO.add_event_detect(27,GPIO.FALLING, callback = changeFootfallDaily)
+GPIO.add_event_detect(WEEK_BUTT,GPIO.FALLING, callback = changeFootfallWeekly)
+GPIO.add_event_detect(DAY_BUTT,GPIO.FALLING, callback = changeFootfallDaily)
+
+GPIO.add_event_detect(INC_LIGHT_BUTT,GPIO.FALLING, callback = increaseLight)
+GPIO.add_event_detect(DEC_LIGHT_BUTT,GPIO.FALLING, callback = decreaseLight)
 
 # Initially run startOfDay to set up, then start the updateFootfall loop
 startOfDayDB()
