@@ -15,6 +15,8 @@ import threading
 import socket
 import select
 import smbus
+from PIL import ImageTk
+import PIL.Image
 
 import tkinter as tk
 from tkinter import ttk
@@ -699,6 +701,13 @@ changeFootfall.grid(column=0,row=5)
 
 addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
 addCustomer.grid(column=0,row=6)
+
+##original = PIL.Image.open("images/RS_Logo.png")
+##resized = original.resize((400,300),PIL.Image.ANTIALIAS)
+##photo = ImageTk.PhotoImage(resized)
+##
+##label = tk.Label(container, image=photo,bg='white')
+##label.grid(column=0,row=0,rowspan=7,sticky='nesw')
 
 customersContainer = tk.Frame(container,bg='#482D60')
 customersContainer.grid(column=0,row=7,rowspan=1,sticky='nesw')
