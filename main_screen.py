@@ -17,12 +17,18 @@ import select
 import smbus
 from PIL import ImageTk
 import PIL.Image
+import os
 
 import RPi.GPIO as GPIO
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter import *
+
+os.system('modprobe w1-gpio')
+os.system('modprobe w1-therm')
+
+temp_sensor = '/sys/bus/w1/devices/28-0000095cb34f/w1_slave'
 
 GPIO.setmode(GPIO.BCM)
 
@@ -58,7 +64,8 @@ bus.write_byte_data(0x39, 0x01 | 0x80, 0x02)
 time.sleep(0.5)
 
 lightValueList = []
-lightX = []
+
+insideTempList = []
 
 appClose = False # Used by second thread to know when the program has been closed
 
@@ -138,27 +145,44 @@ def animateOutside(i):
     # Plot the graph with the updated points
     outsideTempAxis.plot(xsO,ysO,'r')
 
+def read_temperature():
+    f = open(temp_sensor, 'r')
+    lines = f.readlines()
+    f.close()
+    return lines
+
+def read_temp():
+    lines = read_temperature()
+    while lines[0].strip()[-3:] != 'YES':
+        time.sleep(0.2)
+        lines = read_temperature()
+    temp_output = lines[1].find('t=')
+    if temp_output != -1:
+        temp_string = lines[1].strip()[temp_output+2:]
+        temp_c = float(temp_string) / 1000.0
+        return temp_c
+
 def animateInside(i):
     """
     Function called to update the Inside Temperature graph
     """
-    data = open("data_files/insideTemp.txt","r").read()
-    splitData = data.split('\n')
 
-    xsI = []
-    ysI = []
+    global insideTempList
+    
+    #data = open("data_files/insideTemp.txt","r").read()
+    #splitData = data.split('\n')
 
-    currentY = 0 # Stores the current temperature
+    #xsI = []
+    #ysI = []
 
-    # For each line in the text file, add the x and y values into two arrays
-    for eachLine in splitData:
-        if len(eachLine) > 1:
-            x,y = eachLine.split(',')
-            xsI.append(int(x))
-            ysI.append(int(y))
-            currentY = y
+    currentTemperature = int(read_temp())
 
-    currentY = currentY + '\N{DEGREE SIGN}C' # Update the current temperature
+    if len(insideTempList) >= 100:
+        insideTempList = insideTempList[10:]
+        
+    insideTempList.append(currentTemperature)
+    
+    currentTemperature = str(currentTemperature) + '\N{DEGREE SIGN}C' # Update the current temperature
 
     # Clear the graph
     insideTempAxis.cla()
@@ -166,10 +190,40 @@ def animateInside(i):
     # Set the titles and labels
     insideTempAxis.set_title('Inside Temperature', fontsize=20, **titleFont)
     insideTempAxis.set_ylabel('Degrees (\N{DEGREE SIGN}C)', fontsize=10)
-    insideTempAxis.annotate(currentY, xy=(0.955, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
+    insideTempAxis.annotate(currentTemperature, xy=(0.955, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
 
     # Plot the graph with the updated points
-    insideTempAxis.plot(xsI,ysI,'r')
+    insideTempAxis.plot(insideTempList,'r')
+
+    insideTempAxis.set_ylim(ymin=0,ymax=(max(insideTempList)+10))
+
+
+
+    
+
+##    currentY = 0 # Stores the current temperature
+##
+##    # For each line in the text file, add the x and y values into two arrays
+##    for eachLine in splitData:
+##        if len(eachLine) > 1:
+##            x,y = eachLine.split(',')
+##            xsI.append(int(x))
+##            ysI.append(int(y))
+##            currentY = y
+##
+##    currentY = currentY + '\N{DEGREE SIGN}C' # Update the current temperature
+##
+##    # Clear the graph
+##    insideTempAxis.cla()
+##
+##    # Set the titles and labels
+##    insideTempAxis.set_title('Inside Temperature', fontsize=20, **titleFont)
+##    insideTempAxis.set_ylabel('Degrees (\N{DEGREE SIGN}C)', fontsize=10)
+##    insideTempAxis.annotate(currentY, xy=(0.955, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
+##
+##    # Plot the graph with the updated points
+##    #insideTempAxis.plot(xsI,ysI,'r')
+##    insideTempAxis.plot(ysI,'r')
 
 def animateLight(i):
     """
@@ -177,14 +231,7 @@ def animateLight(i):
     """
 
     global lightValueList
-    global lightX
     
-    #data = open("data_files/lightLevel.txt","r").read()
-    #splitData = data.split('\n')
-
-    #xsL = []
-    #ysL = []
-
     # Read data back from 0x0C(12) with command register, 0x80(128), 2 bytes
     # ch0 LSB, ch0 MSB
     data = bus.read_i2c_block_data(0x39, 0x0C | 0x80, 2)
@@ -212,35 +259,9 @@ def animateLight(i):
     lightAxis.annotate(currentLightLevel, xy=(0.91, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
 
     # Plot the graph with the updated points
-    #lightAxis.plot(xsL,ysL,'r')
     lightAxis.plot(lightValueList,'r')
 
     lightAxis.set_ylim(ymin=0,ymax=(max(lightValueList)+200))
-
-
-
-##    currentY = 0 # Stores the current light level
-##
-##    # For each line in the text file, add the x and y values into the two arrays
-##    for eachLine in splitData:
-##        if len(eachLine) > 1:
-##            x,y = eachLine.split(',')
-##            xsL.append(int(x))
-##            ysL.append(int(y))
-##            currentY = y
-##
-##    currentY = currentY + ' Lux' # Update the current light level
-##
-##    # Clear the graph
-##    lightAxis.cla()
-##
-##    # Set the titles and labels
-##    lightAxis.set_title('Light Level', fontsize=20, **titleFont)
-##    lightAxis.set_ylabel('Lux', fontsize=10)
-##    lightAxis.annotate(currentY, xy=(0.91, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
-##
-##    # Plot the graph with the updated points
-##    lightAxis.plot(xsL,ysL,'r')
 
 def plotWeeklyFootfall():
     """
@@ -695,38 +716,38 @@ container.grid_columnconfigure(1, weight=1, minsize=720)
 for row in range(13):
     container.grid_rowconfigure(row, weight=1, minsize=60)
 
-topContainer = tk.Frame(container,bg="white")
-topContainer.grid(column=0,row=0,rowspan=7,sticky='nesw')
-
-topContainer.grid_columnconfigure(0, weight=1)
-
-topContainer.grid_rowconfigure(0,weight=1)
-topContainer.grid_rowconfigure(7,weight=1)
-
-label = tk.Label(topContainer, text="Live Traffic Map/Videos",bg='white')
-label.grid(column=0,row=1)
-
-retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
-retrieveTest.grid(column=0,row=2)
-
-insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
-insertTest.grid(column=0,row=3)
-
-updateFootfallButton = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
-updateFootfallButton.grid(column=0,row=4)
-
-changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
-changeFootfall.grid(column=0,row=5)
-
-addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
-addCustomer.grid(column=0,row=6)
-
-##original = PIL.Image.open("images/RS_Logo.png")
-##resized = original.resize((400,300),PIL.Image.ANTIALIAS)
-##photo = ImageTk.PhotoImage(resized)
+##topContainer = tk.Frame(container,bg="white")
+##topContainer.grid(column=0,row=0,rowspan=7,sticky='nesw')
 ##
-##label = tk.Label(container, image=photo,bg='white')
-##label.grid(column=0,row=0,rowspan=7,sticky='nesw')
+##topContainer.grid_columnconfigure(0, weight=1)
+##
+##topContainer.grid_rowconfigure(0,weight=1)
+##topContainer.grid_rowconfigure(7,weight=1)
+##
+##label = tk.Label(topContainer, text="Live Traffic Map/Videos",bg='white')
+##label.grid(column=0,row=1)
+##
+##retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
+##retrieveTest.grid(column=0,row=2)
+##
+##insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
+##insertTest.grid(column=0,row=3)
+##
+##updateFootfallButton = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
+##updateFootfallButton.grid(column=0,row=4)
+##
+##changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
+##changeFootfall.grid(column=0,row=5)
+##
+##addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
+##addCustomer.grid(column=0,row=6)
+
+original = PIL.Image.open("images/RS_Logo.png")
+resized = original.resize((400,300),PIL.Image.ANTIALIAS)
+photo = ImageTk.PhotoImage(resized)
+
+label = tk.Label(container, image=photo,bg='white')
+label.grid(column=0,row=0,rowspan=7,sticky='nesw')
 
 customersContainer = tk.Frame(container,bg='#482D60')
 customersContainer.grid(column=0,row=7,rowspan=1,sticky='nesw')
@@ -766,7 +787,7 @@ updateFootfall()
 
 # Set the temperature/light graphs to be updated every second
 aniOutside = animation.FuncAnimation(fig, animateOutside, interval=1000)
-aniInside = animation.FuncAnimation(fig, animateInside, interval=1000)
+aniInside = animation.FuncAnimation(fig, animateInside, interval=60000)
 aniLight = animation.FuncAnimation(fig, animateLight, interval=1000)
 
 # Start with the weekly footfall graph
