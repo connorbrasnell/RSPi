@@ -18,9 +18,16 @@ import smbus
 from PIL import ImageTk
 import PIL.Image
 
+import RPi.GPIO as GPIO
+
 import tkinter as tk
 from tkinter import ttk
 from tkinter import *
+
+GPIO.setmode(GPIO.BCM)
+
+GPIO.setup(17, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+GPIO.setup(27, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
 # Connect to the database that holds all the historical footfall data
 db = sql.connect("localhost","RSPiUser","RSComponents","RSPi" )
@@ -553,18 +560,23 @@ def updateFootfallGraph(but):
 
     global footfallGraphChoice
 
+##    if but == 0:
+##        if footfallGraphChoice == 0:
+##            plotWeeklyFootfall()
+##        else:
+##            plotDailyFootfall()
+##    else:
+##        if footfallGraphChoice == 0:
+##            plotDailyFootfall()
+##            footfallGraphChoice = 1
+##        else:
+##            plotWeeklyFootfall()
+##            footfallGraphChoice = 0
+
     if but == 0:
-        if footfallGraphChoice == 0:
-            plotWeeklyFootfall()
-        else:
-            plotDailyFootfall()
+        plotWeeklyFootfall()
     else:
-        if footfallGraphChoice == 0:
-            plotDailyFootfall()
-            footfallGraphChoice = 1
-        else:
-            plotWeeklyFootfall()
-            footfallGraphChoice = 0
+        plotDailyFootfall()
 
 def increaseCustomerCount():
     """
@@ -664,7 +676,14 @@ def getLiveFootfall():
                     if data == "1":
                         increaseCustomerCount()
 
+def changeFootfallWeekly(PIR_PIN):
+    if GPIO.input(17) == 0:
+        updateFootfallGraph(0)
 
+def changeFootfallDaily(PIR_PIN):
+    if GPIO.input(27) == 0:
+        updateFootfallGraph(1)
+    
 # Container has 2 columns and 13 rows
 container = tk.Frame(root, background='white')
 container.pack(side="top", fill="both", expand = True)
@@ -736,6 +755,10 @@ canvas.get_tk_widget().configure(background='white',highlightcolor='white',highl
 
 label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='"DejaVu Sans" 12 bold')
 label.grid(column=1,row=12,rowspan=1,sticky='nesw')
+
+# Set up the button interrupts
+GPIO.add_event_detect(17,GPIO.FALLING, callback = changeFootfallWeekly)
+GPIO.add_event_detect(27,GPIO.FALLING, callback = changeFootfallDaily)
 
 # Initially run startOfDay to set up, then start the updateFootfall loop
 startOfDayDB()
