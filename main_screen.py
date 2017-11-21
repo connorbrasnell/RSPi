@@ -188,12 +188,6 @@ def animateInside(i):
     """
 
     global insideTempList
-    
-    #data = open("data_files/insideTemp.txt","r").read()
-    #splitData = data.split('\n')
-
-    #xsI = []
-    #ysI = []
 
     currentTemperature = int(read_temp())
 
@@ -216,34 +210,6 @@ def animateInside(i):
     insideTempAxis.plot(insideTempList,'r')
 
     insideTempAxis.set_ylim(ymin=0,ymax=(max(insideTempList)+10))
-
-
-
-    
-
-##    currentY = 0 # Stores the current temperature
-##
-##    # For each line in the text file, add the x and y values into two arrays
-##    for eachLine in splitData:
-##        if len(eachLine) > 1:
-##            x,y = eachLine.split(',')
-##            xsI.append(int(x))
-##            ysI.append(int(y))
-##            currentY = y
-##
-##    currentY = currentY + '\N{DEGREE SIGN}C' # Update the current temperature
-##
-##    # Clear the graph
-##    insideTempAxis.cla()
-##
-##    # Set the titles and labels
-##    insideTempAxis.set_title('Inside Temperature', fontsize=20, **titleFont)
-##    insideTempAxis.set_ylabel('Degrees (\N{DEGREE SIGN}C)', fontsize=10)
-##    insideTempAxis.annotate(currentY, xy=(0.955, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
-##
-##    # Plot the graph with the updated points
-##    #insideTempAxis.plot(xsI,ysI,'r')
-##    insideTempAxis.plot(ysI,'r')
 
 def animateLight(i):
     """
@@ -601,19 +567,6 @@ def updateFootfallGraph(but):
 
     global footfallGraphChoice
 
-##    if but == 0:
-##        if footfallGraphChoice == 0:
-##            plotWeeklyFootfall()
-##        else:
-##            plotDailyFootfall()
-##    else:
-##        if footfallGraphChoice == 0:
-##            plotDailyFootfall()
-##            footfallGraphChoice = 1
-##        else:
-##            plotWeeklyFootfall()
-##            footfallGraphChoice = 0
-
     if but == 0:
         plotWeeklyFootfall()
     else:
@@ -729,8 +682,6 @@ def increaseLight(PIN):
 
     global lightCount
 
-    print("Increase Light from: " + str(lightCount))
-
     if GPIO.input(INC_LIGHT_BUTT) == 0:
         if lightCount < 5:
             lightCount = lightCount + 1
@@ -749,8 +700,6 @@ def increaseLight(PIN):
 def decreaseLight(PIN):
 
     global lightCount
-
-    print("Decrease Light from: " + str(lightCount))
 
     if GPIO.input(DEC_LIGHT_BUTT) == 0:
         if lightCount > 0:
@@ -843,8 +792,8 @@ label.grid(column=1,row=12,rowspan=1,sticky='nesw')
 GPIO.add_event_detect(WEEK_BUTT,GPIO.FALLING, callback = changeFootfallWeekly)
 GPIO.add_event_detect(DAY_BUTT,GPIO.FALLING, callback = changeFootfallDaily)
 
-GPIO.add_event_detect(INC_LIGHT_BUTT,GPIO.FALLING, callback = increaseLight)
-GPIO.add_event_detect(DEC_LIGHT_BUTT,GPIO.FALLING, callback = decreaseLight)
+GPIO.add_event_detect(INC_LIGHT_BUTT,GPIO.FALLING, callback = increaseLight, bouncetime=200)
+GPIO.add_event_detect(DEC_LIGHT_BUTT,GPIO.FALLING, callback = decreaseLight, bouncetime=200)
 
 # Initially run startOfDay to set up, then start the updateFootfall loop
 startOfDayDB()
@@ -865,6 +814,12 @@ setupServer()
 t = threading.Thread(target = getLiveFootfall)
 t.start()
 
+def cleanupLEDS():
+    GPIO.output(LED1,GPIO.LOW)
+    GPIO.output(LED2,GPIO.LOW)
+    GPIO.output(LED3,GPIO.LOW)
+    GPIO.output(LED4,GPIO.LOW)
+    GPIO.output(LED5,GPIO.LOW)
 
 def on_close():
     """
@@ -889,6 +844,8 @@ def on_close():
     s.shutdown(1)
     print("Closing Socket")
     s.close()
+    cleanupLEDS()
+    GPIO.cleanup()
     db.close()
     root.destroy()
     sys.exit()
