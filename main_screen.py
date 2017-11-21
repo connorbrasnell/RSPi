@@ -1,3 +1,20 @@
+import time
+import sys
+import threading
+import os
+
+import httplib2
+import oauth2client
+from oauth2client import client, tools
+import base64
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from apiclient import errors, discovery
+import mimetypes
+from email.mime.image import MIMEImage
+from email.mime.audio import MIMEAudio
+from email.mime.base import MIMEBase
+
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2TkAgg
@@ -5,28 +22,33 @@ from matplotlib.figure import Figure
 import matplotlib.animation as animation
 from matplotlib import style
 import matplotlib.pyplot as plt
-import time
+
 import datetime
 from datetime import date
-import sys
-import MySQLdb as sql
 from dateutil.relativedelta import relativedelta
-import threading
-import socket
-import select
-import smbus
-from PIL import ImageTk
-import PIL.Image
-import os
-
-import RPi.GPIO as GPIO
 
 import tkinter as tk
 from tkinter import ttk
 from tkinter import *
 
+import MySQLdb as sql
+
+import RPi.GPIO as GPIO
+
+from PIL import ImageTk
+import PIL.Image
+
+import smbus
+
+import socket
+import select
+
 os.system('modprobe w1-gpio')
 os.system('modprobe w1-therm')
+
+SCOPES = 'https://www.googleapis.com/auth/gmail.send'
+CLIENT_SECRET_FILE = 'client_id.json'
+APPLICATION_NAME = 'Gmail API Python Send Email'
 
 temp_sensor = '/sys/bus/w1/devices/28-0000095cb34f/w1_slave'
 
@@ -54,6 +76,7 @@ GPIO.setup(LED4, GPIO.OUT)
 GPIO.setup(LED5, GPIO.OUT)
 
 lightCount = 0
+lightCountMutex = False
 
 # Connect to the database that holds all the historical footfall data
 db = sql.connect("localhost","RSPiUser","RSComponents","RSPi" )
@@ -132,6 +155,54 @@ outsideTempAxis.xaxis.set_visible(False)
 insideTempAxis.xaxis.set_visible(False)
 lightAxis.xaxis.set_visible(False)
 
+def get_credentials():
+    home_dir = os.path.expanduser('~')
+    credential_dir = os.path.join(home_dir, '.credentials')
+    if not os.path.exists(credential_dir):
+        os.makedirs(credential_dir)
+    credential_path = os.path.join(credential_dir,
+                                   'gmail-python-email-send.json')
+    store = oauth2client.file.Storage(credential_path)
+    credentials = store.get()
+    if not credentials or credentials.invalid:
+        flow = client.flow_from_clientsecrets(CLIENT_SECRET_FILE, SCOPES)
+        flow.user_agent = APPLICATION_NAME
+        credentials = tools.run_flow(flow, store)
+        print('Storing credentials to ' + credential_path)
+    return credentials
+
+def SendMessage(sender, to, subject, msgHtml, msgPlain, attachmentFile=None):
+    credentials = get_credentials()
+    http = credentials.authorize(httplib2.Http())
+    service = discovery.build('gmail', 'v1', http=http)
+    if attachmentFile:
+        message1 = createMessageWithAttachment(sender, to, subject, msgHtml, msgPlain, attachmentFile)
+    else:
+        message1 = CreateMessageHtml(sender, to, subject, msgHtml, msgPlain)
+    result = SendMessageInternal(service, "me", message1)
+    return result
+
+def SendMessageInternal(service, user_id, message):
+    try:
+        message = (service.users().messages().send(userId=user_id, body=message).execute())
+        print('Message Id: %s' % message['id'])
+        return message
+    except errors.HttpError as error:
+        print('An error occurred: %s' % error)
+        return("Error")
+    return "OK"
+
+def CreateMessageHtml(sender, to, subject, msgHtml, msgPlain):
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = sender
+    msg['To'] = to
+    msg.attach(MIMEText(msgPlain, 'plain'))
+    msg.attach(MIMEText(msgHtml, 'html'))
+    raw = base64.urlsafe_b64encode(bytes(msg.as_string(), 'UTF-8'))
+    raw = raw.decode()
+    return {'raw': raw}
+
 def animateOutside(i):
     """
     Function called to update the Outside Temperature graph
@@ -189,7 +260,7 @@ def animateInside(i):
 
     global insideTempList
 
-    currentTemperature = int(read_temp())
+    currentTemperature = round(read_temp(),1)
 
     if len(insideTempList) >= 100:
         insideTempList = insideTempList[10:]
@@ -413,6 +484,13 @@ def updateFootfall():
             print(e)
             print("Rollback")
             db.rollback()
+
+        to = "connorbrasnell@gmail.com"
+        sender = "RSPiFootfall@gmail.com"
+        subject = "Footfall Today"
+        msgHtml = "Hi<br /><br />Today's footfall was " + str(textFileValues[0])
+        msgPlain = ""
+        SendMessage(sender, to, subject, msgHtml, msgPlain)
 
         startOfDayDB()
 
@@ -681,40 +759,54 @@ def changeFootfallDaily(PIN):
 def increaseLight(PIN):
 
     global lightCount
+    global lightCountMutex
 
-    if GPIO.input(INC_LIGHT_BUTT) == 0:
-        if lightCount < 5:
-            lightCount = lightCount + 1
+    if lightCountMutex == False:
 
-            if lightCount == 1:
-                GPIO.output(LED1,GPIO.HIGH)
-            elif lightCount == 2:
-                GPIO.output(LED2,GPIO.HIGH)
-            elif lightCount == 3:
-                GPIO.output(LED3,GPIO.HIGH)
-            elif lightCount == 4:
-                GPIO.output(LED4,GPIO.HIGH)
-            elif lightCount == 5:
-                GPIO.output(LED5,GPIO.HIGH)
+        lightCountMutex = True
+
+        if GPIO.input(INC_LIGHT_BUTT) == 0:
+            if lightCount < 5:
+                lightCount = lightCount + 1
+
+                if lightCount == 1:
+                    GPIO.output(LED1,GPIO.HIGH)
+                elif lightCount == 2:
+                    GPIO.output(LED2,GPIO.HIGH)
+                elif lightCount == 3:
+                    GPIO.output(LED3,GPIO.HIGH)
+                elif lightCount == 4:
+                    GPIO.output(LED4,GPIO.HIGH)
+                elif lightCount == 5:
+                    GPIO.output(LED5,GPIO.HIGH)
+
+        lightCountMutex = False
 
 def decreaseLight(PIN):
 
     global lightCount
+    global lightCountMutex
 
-    if GPIO.input(DEC_LIGHT_BUTT) == 0:
-        if lightCount > 0:
-            lightCount = lightCount - 1
+    if lightCountMutex == False:
 
-            if lightCount == 0:
-                GPIO.output(LED1,GPIO.LOW)
-            elif lightCount == 1:
-                GPIO.output(LED2,GPIO.LOW)
-            elif lightCount == 2:
-                GPIO.output(LED3,GPIO.LOW)
-            elif lightCount == 3:
-                GPIO.output(LED4,GPIO.LOW)
-            elif lightCount == 4:
-                GPIO.output(LED5,GPIO.LOW)     
+        lightCountMutex = True
+
+        if GPIO.input(DEC_LIGHT_BUTT) == 0:
+            if lightCount > 0:
+                lightCount = lightCount - 1
+
+                if lightCount == 0:
+                    GPIO.output(LED1,GPIO.LOW)
+                elif lightCount == 1:
+                    GPIO.output(LED2,GPIO.LOW)
+                elif lightCount == 2:
+                    GPIO.output(LED3,GPIO.LOW)
+                elif lightCount == 3:
+                    GPIO.output(LED4,GPIO.LOW)
+                elif lightCount == 4:
+                    GPIO.output(LED5,GPIO.LOW)
+
+        lightCountMutex = False
 
 # Container has 2 columns and 13 rows
 container = tk.Frame(root, background='white')
