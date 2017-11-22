@@ -262,8 +262,8 @@ def animateInside(i):
 
     currentTemperature = round(read_temp(),1)
 
-    if len(insideTempList) >= 100:
-        insideTempList = insideTempList[10:]
+    if len(insideTempList) >= 480:
+        insideTempList = insideTempList[20:]
         
     insideTempList.append(currentTemperature)
     
@@ -845,8 +845,8 @@ for row in range(13):
 ##addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
 ##addCustomer.grid(column=0,row=6)
 
-original = PIL.Image.open("images/RS_Logo.png")
-resized = original.resize((400,300),PIL.Image.ANTIALIAS)
+original = PIL.Image.open("images/rs-components.png")
+resized = original.resize((514,427),PIL.Image.ANTIALIAS)
 photo = ImageTk.PhotoImage(resized)
 
 label = tk.Label(container, image=photo,bg='white')
@@ -893,7 +893,7 @@ updateFootfall()
 
 # Set the temperature/light graphs to be updated every second
 aniOutside = animation.FuncAnimation(fig, animateOutside, interval=1000)
-aniInside = animation.FuncAnimation(fig, animateInside, interval=60000)
+aniInside = animation.FuncAnimation(fig, animateInside, interval=180000)
 aniLight = animation.FuncAnimation(fig, animateLight, interval=1000)
 
 # Start with the weekly footfall graph
