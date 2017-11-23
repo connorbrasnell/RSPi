@@ -135,6 +135,10 @@ root.wm_title("RS Pi")
 customerCount = StringVar()
 customerCount.set(str(customerCountInt))
 
+# Variables used to update the manager's corner label
+managersCornerText = StringVar()
+managersCornerText.set('Manager\'s Corner')
+
 style.use("ggplot")
 
 # Temperate/Light graph setup
@@ -494,8 +498,16 @@ def updateFootfall():
 
         startOfDayDB()
 
-    root.after(900000, updateFootfall) # Call the function every 15 minutes
-    #root.after(5000, updateFootfall)
+    updateManagersCorner()
+
+    #root.after(900000, updateFootfall) # Call the function every 15 minutes
+    root.after(5000, updateFootfall)
+
+def updateManagersCorner():
+
+    data = open("data_files/managerCorner.txt","r").read()
+
+    managersCornerText.set(data)
 
 def calculateCurrentDay(day):
     """
@@ -877,7 +889,7 @@ canvas = FigureCanvasTkAgg(fig, container)
 canvas.get_tk_widget().grid(column=1,row=0,rowspan=12,sticky='nesw')
 canvas.get_tk_widget().configure(background='white',highlightcolor='white',highlightbackground='white')
 
-label = tk.Label(container, text="Absolute Radio: American Idiot by Green Day",fg='white',bg='red',font='"DejaVu Sans" 12 bold')
+label = tk.Label(container, textvariable=managersCornerText,fg='white',bg='red',font='"DejaVu Sans" 12 bold')
 label.grid(column=1,row=12,rowspan=1,sticky='nesw')
 
 # Set up the button interrupts
@@ -889,7 +901,7 @@ GPIO.add_event_detect(DEC_LIGHT_BUTT,GPIO.FALLING, callback = decreaseLight, bou
 
 # Initially run startOfDay to set up, then start the updateFootfall loop
 startOfDayDB()
-updateFootfall()
+updateFootfall() # Also calls updateManagersCorner()
 
 # Set the temperature/light graphs to be updated every second
 aniOutside = animation.FuncAnimation(fig, animateOutside, interval=1000)

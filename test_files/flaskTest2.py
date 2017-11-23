@@ -27,5 +27,5 @@ def logout():
 
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
-app.secret_key = os.urandom(12)
-app.run(debug=False,host='0.0.0.0', port=8000)
+if __name__ == '__main__':
+    app.run(debug=False,host='0,0,0,0',port=8000)

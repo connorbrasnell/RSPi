@@ -1,0 +1,2 @@
+2017/11/23 10:00:20 [error] 2511#0: *4 connect() failed (111: Connection refused) while connecting to upstream, client: 192.168.1.118, server: hello.itu24.com, request: "GET / HTTP/1.1", upstream: "http://127.0.0.1:8000/", host: "192.168.1.157"
+2017/11/23 13:20:30 [error] 2510#0: *180 connect() failed (111: Connection refused) while connecting to upstream, client: 192.168.1.157, server: hello.itu24.com, request: "POST /login HTTP/1.1", upstream: "http://127.0.0.1:8000/login", host: "192.168.1.157", referrer: "http://192.168.1.157/"
