@@ -43,6 +43,8 @@ import smbus
 import socket
 import select
 
+import pyowm
+
 os.system('modprobe w1-gpio')
 os.system('modprobe w1-therm')
 
@@ -109,6 +111,7 @@ time.sleep(0.5)
 lightValueList = []
 
 insideTempList = []
+outsideTempList = []
 
 appClose = False # Used by second thread to know when the program has been closed
 
@@ -126,6 +129,8 @@ customerCountInt = 0 # Counts the total amount of customers in a day
 timePeriodCount = [0,0,0,0,0]
 
 titleFont = {'fontname':'DejaVu Sans'} # Default Mac Python font
+
+owm = pyowm.OWM('518e6747529b303ad3cd2755a5c8c0f8')
 
 # Set up the Tkinter GUI
 root = tk.Tk()
@@ -211,23 +216,18 @@ def animateOutside(i):
     """
     Function called to update the Outside Temperature graph
     """
-    data = open("data_files/outsideTemp.txt","r").read()
-    splitData = data.split('\n')
+    global outsideTempList
 
-    xsO = []
-    ysO = []
+    observation = owm.weather_at_place('London,uk')
+    w = observation.get_weather()
+    currentTemperature = w.get_temperature('celsius')
 
-    currentY = 0 # Stores the current temperature
-
-    # For each line in the text file, add the x and y values into two arrays
-    for eachLine in splitData:
-        if len(eachLine) > 1:
-            x,y = eachLine.split(',')
-            xsO.append(int(x))
-            ysO.append(int(y))
-            currentY = y
-
-    currentY = currentY + '\N{DEGREE SIGN}C' # Update the current temperature
+    if len(outsideTempList) >= 96:
+        outsideTempList = outsideTempList[10:]
+        
+    outsideTempList.append(round(currentTemperature['temp'],1))
+    
+    currentTemperature = str(round(currentTemperature['temp'],1)) + '\N{DEGREE SIGN}C' # Update the current temperature
 
     # Clear the graph
     outsideTempAxis.cla()
@@ -235,10 +235,12 @@ def animateOutside(i):
     # Set the titles and labels
     outsideTempAxis.set_title('Outside Temperature', fontsize=20, **titleFont)
     outsideTempAxis.set_ylabel('Degrees (\N{DEGREE SIGN}C)', fontsize=10)
-    outsideTempAxis.annotate(currentY, xy=(0.955, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
+    outsideTempAxis.annotate(currentTemperature, xy=(0.955, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
 
     # Plot the graph with the updated points
-    outsideTempAxis.plot(xsO,ysO,'r')
+    outsideTempAxis.plot(outsideTempList,'r')
+
+    outsideTempAxis.set_ylim(ymin=0,ymax=(max(outsideTempList)+10))
 
 def read_temperature():
     f = open(temp_sensor, 'r')
@@ -500,8 +502,8 @@ def updateFootfall():
 
     updateManagersCorner()
 
-    #root.after(900000, updateFootfall) # Call the function every 15 minutes
-    root.after(5000, updateFootfall)
+    root.after(900000, updateFootfall) # Call the function every 15 minutes
+    #root.after(5000, updateFootfall)
 
 def updateManagersCorner():
 
@@ -904,7 +906,7 @@ startOfDayDB()
 updateFootfall() # Also calls updateManagersCorner()
 
 # Set the temperature/light graphs to be updated every second
-aniOutside = animation.FuncAnimation(fig, animateOutside, interval=1000)
+aniOutside = animation.FuncAnimation(fig, animateOutside, interval=900000)
 aniInside = animation.FuncAnimation(fig, animateInside, interval=180000)
 aniLight = animation.FuncAnimation(fig, animateLight, interval=1000)
 
