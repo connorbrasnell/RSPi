@@ -2,6 +2,7 @@
 from __future__ import print_function
 from PIL import Image
 from PIL import ImageTk
+from PIL import ImageDraw
 import tkinter as tki
 import threading
 import datetime
@@ -9,6 +10,7 @@ import imutils
 import cv2
 import os
 import pytesseract
+import re
 
 class PhotoBoothApp:
 	def __init__(self, vs, outputPath):
@@ -20,27 +22,45 @@ class PhotoBoothApp:
 		self.frame = None
 		self.thread = None
 		self.stopEvent = None
+		
+		self.menuScreen = True
+		self.captureScreen = False
+		self.infoScreen = False
 
 		# initialize the root window and image panel
 		self.root = tki.Tk()
 		self.panel = None
+		
+		self.startBtn = tki.Button(self.root, text="Start", width = 20,
+			command=self.startScanner)
+		self.startBtn.pack(fill="both", expand="no", padx=10,
+			pady=10)
+		
+		self.backBtn = tki.Button(self.root, text="Scan Again", width = 20,
+			command=self.scanMode)
+		self.backBtn.pack(fill="both", expand="no", padx=10,
+			pady=10)
+		
+		self.backBtn.pack_forget()
 
 		# create a button, that when pressed, will take the current
 		# frame and save it to file
-		btn = tki.Button(self.root, text="Snapshot!",
+		self.btn = tki.Button(self.root, text="Capture!", width = 10,
 			command=self.takeSnapshot)
-		btn.pack(side="bottom", fill="both", expand="yes", padx=10,
-			pady=10)
+		self.btn.pack(side="right", fill="both", expand="yes", padx=10,pady=10)
+		
+		self.btn.pack_forget()
 
 		# start a thread that constantly pools the video sensor for
 		# the most recently read frame
 		self.stopEvent = threading.Event()
 		#self.thread = threading.Thread(target=self.videoLoop, args=())
 		#self.thread.start()
-		self.videoLoop()
+		
+		#self.videoLoop()
 
 		# set a callback to handle when the window is closed
-		self.root.wm_title("PyImageSearch PhotoBooth")
+		self.root.wm_title("Stock Scanner")
 		self.root.wm_protocol("WM_DELETE_WINDOW", self.onClose)
 
 	def videoLoop(self):
@@ -54,13 +74,28 @@ class PhotoBoothApp:
 				# grab the frame from the video stream and resize it to
 				# have a maximum width of 300 pixels
 				self.frame = self.vs.read()
-				self.frame = imutils.resize(self.frame, width=300)
+				self.frame = imutils.resize(self.frame, width=650)
 		
 				# OpenCV represents images in BGR order; however PIL
 				# represents images in RGB order, so we need to swap
 				# the channels, then convert to PIL and ImageTk format
 				image = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
 				image = Image.fromarray(image)
+				
+				#cv2.rectangle(image,(400,0),(600,400),(0,255,0),10)
+				draw = ImageDraw.Draw(image)
+				draw.line([221,142,244,142],fill="red", width=5)
+				draw.line([221,142,221,165],fill="red", width=5)
+				draw.line([221,235,221,212],fill="red", width=5)
+				draw.line([221,235,244,235],fill="red", width=5)
+				draw.line([429,142,406,142],fill="red", width=5)
+				draw.line([429,142,429,165],fill="red", width=5)
+				draw.line([429,235,429,212],fill="red", width=5)
+				draw.line([429,235,406,235],fill="red", width=5)
+				
+				draw.line([0,390,650,390],fill="red") # Shows buttom of camera
+				del draw
+				
 				image = ImageTk.PhotoImage(image)
 		
 				# if the panel is not None, we need to initialize it
@@ -76,31 +111,21 @@ class PhotoBoothApp:
 
 		except RuntimeError as e:
 			print("[INFO] caught a RuntimeError")
-		self.panel.after(10,self.videoLoop)
+			
+		if self.captureScreen == True:
+                    self.panel.after(10,self.videoLoop)
 
 	def takeSnapshot(self):
-                # grab the current timestamp and use it to construct the
-                # output path
-                ts = datetime.datetime.now()
-                filename = "{}.jpg".format(ts.strftime("%Y-%m-%d_%H-%M-%S"))
-                p = os.path.sep.join((self.outputPath, filename))
-
-                # save the file
-                cv2.imwrite(p, self.frame.copy())
-                print("[INFO] saved {}".format(filename))
-
-                fileToParse = "camera_output/" + filename
 
                 # load the example image and convert it to grayscale
-                #image = cv2.imread("camera_output/4.jpg")
-                image = cv2.imread(fileToParse)
+                image = self.frame.copy()[142:235, 221:429]
                 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
                 #cv2.imshow("Image", gray)
 
-                gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+                #gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
-                gray = cv2.medianBlur(gray, 3)
+                #gray = cv2.medianBlur(gray, 3)
 
                 # write the grayscale image to disk as a temporary file so we can
                 # apply OCR to it
@@ -111,11 +136,69 @@ class PhotoBoothApp:
                 # the temporary file
                 text = pytesseract.image_to_string(Image.open(filename))
                 os.remove(filename)
-                print(text)
+                #print(text)
                 
+                matches = []
+                checkOrder = []
                 
+                matches.append(re.findall(r"\d{3}\-\d{4}",text))
+                matches.append(re.findall(r"\d{3}\-\d{3}",text))
+                
+                matches.append(re.findall(r"\d{7}",text))
+                matches.append(re.findall(r"\d{6}",text))
+                
+                matches.append(re.findall(r"\d{3}\s\d{4}",text))
+                matches.append(re.findall(r"\d{3}\s\d{3}",text))
+                
+                #print("Matched (XXX-XXXX): " + str(matches[0]))
+                #print("Matched (XXX-XXX): " + str(matches[1]))
+                #print("Matched (XXXXXXX): " + str(matches[2]))
+                #print("Matched (XXXXXX): " + str(matches[3]))
+                #print("Matched (XXX XXXX): " + str(matches[4]))
+                #print("Matched (XXX XXX): " + str(matches[5]))
+                
+                for i in range(6):
+                    for j in range(len(matches[i])):
+                        checkOrder.append(matches[i][j])
+                
+                #print ("\nMatches: " + str(matches) + "\n")
+                print ("\nCheck Order: " + str(checkOrder) + "\n")
+##                
+##                for i in range(len(checkOrder)):
+##                    if getApi(checkOrder[i]) != '':
+##                        outputValues = values
+##                        break
+##                    
+##                if outputValues == '':
+##                    print("Please try again, no product found")
+##                else:
+##                    print(outputValues)
                 
                 #cv2.imshow("Output", gray)
+                
+                if len(checkOrder) > 0:
+                    self.btn.pack_forget()
+                    self.panel.pack_forget()
+                    self.backBtn.pack()
+                    self.captureScreen = False
+                    self.infoScreen = True
+
+	def scanMode(self):
+		self.backBtn.pack_forget()
+		self.panel.pack(side="left", padx=10, pady=10)
+		self.infoScreen = False
+		self.captureScreen = True
+		#self.panel = None
+		self.videoLoop()
+		self.btn.pack(side="right", fill="both", expand="yes", padx=10,pady=10)
+		
+	def startScanner(self):
+		self.startBtn.pack_forget()
+		#self.panel.pack()
+		self.menuScreen = False
+		self.captureScreen = True
+		self.videoLoop()
+		self.btn.pack(side="right", fill="both", expand="yes", padx=10,pady=10)
 
 	def onClose(self):
 		# set the stop event, cleanup the camera, and allow the rest of
