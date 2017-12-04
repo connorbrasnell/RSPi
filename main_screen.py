@@ -324,7 +324,13 @@ def animateLight(i):
     # Plot the graph with the updated points
     lightAxis.plot(lightValueList,'r')
 
-    lightAxis.set_ylim(ymin=0,ymax=(max(lightValueList)+200))
+    #lightAxis.set_ylim(ymin=0,ymax=(max(lightValueList)+200))
+
+    currentMinLightY = min(lightValueList) - 200
+    if currentMinLightY < 0:
+        currentMinLightY = 0
+        
+    lightAxis.set_ylim(ymin=currentMinLightY,ymax=(max(lightValueList)+200))
 
 def plotWeeklyFootfall():
     """
