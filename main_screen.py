@@ -128,6 +128,8 @@ footfallGraphChoice = 0 # Decides which footfall graph to switch to
 customerCountInt = 0 # Counts the total amount of customers in a day
 timePeriodCount = [0,0,0,0,0]
 
+ignoreNext = False
+
 titleFont = {'fontname':'DejaVu Sans'} # Default Mac Python font
 
 owm = pyowm.OWM('518e6747529b303ad3cd2755a5c8c0f8')
@@ -144,6 +146,10 @@ customerCount.set(str(customerCountInt))
 # Variables used to update the manager's corner label
 managersCornerText = StringVar()
 managersCornerText.set('Manager\'s Corner')
+
+# Variables used to update the warning about footfall connection
+footfallConnected = StringVar()
+footfallConnected.set('Counter not connected!')
 
 style.use("ggplot")
 
@@ -184,7 +190,10 @@ def get_credentials():
 def SendMessage(sender, to, subject, msgHtml, msgPlain, attachmentFile=None):
     credentials = get_credentials()
     http = credentials.authorize(httplib2.Http())
-    service = discovery.build('gmail', 'v1', http=http)
+    try:
+        service = discovery.build('gmail', 'v1', http=http)
+    except:
+	    return 0
     if attachmentFile:
         message1 = createMessageWithAttachment(sender, to, subject, msgHtml, msgPlain, attachmentFile)
     else:
@@ -295,6 +304,12 @@ def animateLight(i):
     """
 
     global lightValueList
+    global connected
+    
+    if connected == True:
+	    setConnected()
+    elif connected == False:
+        setNotConnected()
     
     # Read data back from 0x0C(12) with command register, 0x80(128), 2 bytes
     # ch0 LSB, ch0 MSB
@@ -498,12 +513,15 @@ def updateFootfall():
             print("Rollback")
             db.rollback()
 
-        to = "connorbrasnell@gmail.com"
+        to = "mark.brasnell@rs-components.com"
         sender = "RSPiFootfall@gmail.com"
-        subject = "Footfall Today"
-        msgHtml = "Hi<br /><br />Today's footfall was " + str(textFileValues[0])
+        subject = "Footfall for " + str(textFileDate)
+        msgHtml = "Hi Mark,<br /><br />" + yesterdayDay + "'s footfall (" + str(textFileDate) + ") was " + str(textFileValues[0]) + "." + "<br /><br /> 7am-9am: " + str(textFileValues[1]) + "<br />9am-11am: " + str(textFileValues[2]) + "<br />11am-1pm: " + str(textFileValues[3]) + "<br />1pm-3pm: " + str(textFileValues[4]) + "<br />3pm-5:30pm: " + str(textFileValues[5]) + "<br /><br /> Kind Regards, <br />Your friendly neighbourhood RS Pi"
         msgPlain = ""
-        SendMessage(sender, to, subject, msgHtml, msgPlain)
+        emailResult = SendMessage(sender, to, subject, msgHtml, msgPlain)
+        
+        if emailResult == 0:
+            emailResult = SendMessage(sender, to, subject, msgHtml, msgPlain)
 
         startOfDayDB()
 
@@ -680,25 +698,44 @@ def increaseCustomerCount():
 
     global customerCountInt
     global timePeriodCount
+    global ignoreNext
+    
+    if ignoreNext == False:
 
-    customerCountInt = customerCountInt + 1
-    customerCount.set(str(customerCountInt))
+	    customerCountInt = customerCountInt + 1
+	    customerCount.set(str(customerCountInt))
 
-    baseTime = datetime.datetime.now().replace(hour=7, minute=0, second=0)
-    currentTime = datetime.datetime.now()
+	    baseTime = datetime.datetime.now().replace(hour=7, minute=0, second=0)
+	    currentTime = datetime.datetime.now()
 
-    difference = ((currentTime - baseTime).total_seconds()) / 60
+	    difference = ((currentTime - baseTime).total_seconds()) / 60
 
-    if difference < 120:
-        timePeriodCount[0] = timePeriodCount[0] + 1
-    elif difference < 240:
-        timePeriodCount[1] = timePeriodCount[1] + 1
-    elif difference < 360:
-        timePeriodCount[2] = timePeriodCount[2] + 1
-    elif difference < 480:
-        timePeriodCount[3] = timePeriodCount[3] + 1
-    elif difference < 660:
-        timePeriodCount[4] = timePeriodCount[4] + 1
+	    if difference < 120:
+	        timePeriodCount[0] = timePeriodCount[0] + 1
+	    elif difference < 240:
+	        timePeriodCount[1] = timePeriodCount[1] + 1
+	    elif difference < 360:
+	        timePeriodCount[2] = timePeriodCount[2] + 1
+	    elif difference < 480:
+	        timePeriodCount[3] = timePeriodCount[3] + 1
+	    elif difference < 660:
+	        timePeriodCount[4] = timePeriodCount[4] + 1
+			
+	    ignoreNext = True
+		
+    else:
+		
+	    ignoreNext = False
+
+def setNotConnected():
+	global footfallConnected
+	
+	footfallConnected.set('Counter not connected!')
+	
+def setConnected():
+	global footfallConnected
+	
+	footfallConnected.set('')
 
 def setupServer():
     """
@@ -728,6 +765,7 @@ def getLiveFootfall():
     global s
     global conn
     global waiting_on_data
+    global connected
 
     while appClose == False:
 
@@ -840,32 +878,6 @@ container.grid_columnconfigure(1, weight=1, minsize=720)
 for row in range(13):
     container.grid_rowconfigure(row, weight=1, minsize=60)
 
-##topContainer = tk.Frame(container,bg="white")
-##topContainer.grid(column=0,row=0,rowspan=7,sticky='nesw')
-##
-##topContainer.grid_columnconfigure(0, weight=1)
-##
-##topContainer.grid_rowconfigure(0,weight=1)
-##topContainer.grid_rowconfigure(7,weight=1)
-##
-##label = tk.Label(topContainer, text="Live Traffic Map/Videos",bg='white')
-##label.grid(column=0,row=1)
-##
-##retrieveTest = tk.Button(topContainer, text = 'Start of Day', command = startOfDayDB)
-##retrieveTest.grid(column=0,row=2)
-##
-##insertTest = tk.Button(topContainer, text = 'End of Day', command = endOfDayDB)
-##insertTest.grid(column=0,row=3)
-##
-##updateFootfallButton = tk.Button(topContainer, text = 'Update Footfall', command = lambda: updateFootfallGraph(0))
-##updateFootfallButton.grid(column=0,row=4)
-##
-##changeFootfall = tk.Button(topContainer, text = 'Change Footfall', command = lambda: updateFootfallGraph(1))
-##changeFootfall.grid(column=0,row=5)
-##
-##addCustomer = tk.Button(topContainer, text = 'Add Customer', command = increaseCustomerCount)
-##addCustomer.grid(column=0,row=6)
-
 original = PIL.Image.open("images/rs-components.png")
 resized = original.resize((514,427),PIL.Image.ANTIALIAS)
 photo = ImageTk.PhotoImage(resized)
@@ -879,7 +891,7 @@ customersContainer.grid(column=0,row=7,rowspan=1,sticky='nesw')
 customersContainer.grid_rowconfigure(0, weight=1)
 
 customersContainer.grid_columnconfigure(0,weight=1)
-customersContainer.grid_columnconfigure(4,weight=1)
+customersContainer.grid_columnconfigure(5,weight=1)
 
 customerCountLabel1 = tk.Label(customersContainer, text = 'Today:', fg='white', bg='#482D60', font='"DejaVu Sans" 14 bold')
 customerCountLabel1.grid(column=1,row=0,rowspan=1,sticky='nesw')
@@ -889,6 +901,9 @@ customerCountLabel2.grid(column=2,row=0,rowspan=1,sticky='nesw')
 
 customerCountLabel3 = tk.Label(customersContainer, text = 'customers', fg='white', bg='#482D60', font='"DejaVu Sans" 14')
 customerCountLabel3.grid(column=3,row=0,rowspan=1,sticky='nesw')
+
+footfallWarningLbl = tk.Label(customersContainer, textvariable=footfallConnected, fg='red', bg='#482D60', font='"DejaVu Sans" 14')
+footfallWarningLbl.grid(column=4,row=0,rowspan=1,sticky='nesw')
 
 canvasFootfall = FigureCanvasTkAgg(figFootfall, container)
 canvasFootfall.get_tk_widget().grid(column=0,row=8,rowspan=5,sticky='nesw',pady=(20,0))
