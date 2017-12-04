@@ -135,6 +135,7 @@ owm = pyowm.OWM('518e6747529b303ad3cd2755a5c8c0f8')
 # Set up the Tkinter GUI
 root = tk.Tk()
 root.wm_title("RS Pi")
+root.attributes('-zoomed', True)
 
 # Variables used to update the customer count label
 customerCount = StringVar()
