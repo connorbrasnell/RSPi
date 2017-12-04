@@ -305,6 +305,7 @@ def animateLight(i):
 
     global lightValueList
     global connected
+    global lightCount
     
     if connected == True:
 	    setConnected()
@@ -327,7 +328,7 @@ def animateLight(i):
         
     lightValueList.append(currentLightLevel)
     
-    currentLightLevel = str(currentLightLevel) + ' Lux' # Update the current light level
+    currentLightLevelStr = str(currentLightLevel) + ' Lux' # Update the current light level
 
     # Clear the graph
     lightAxis.cla()
@@ -335,18 +336,19 @@ def animateLight(i):
     # Set the titles and labels
     lightAxis.set_title('Light Level', fontsize=20, **titleFont)
     lightAxis.set_ylabel('Lux', fontsize=10)
-    lightAxis.annotate(currentLightLevel, xy=(0.91, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
+    lightAxis.annotate(currentLightLevelStr, xy=(0.91, 1.05), xycoords='axes fraction',fontsize=14, **titleFont)
 
     # Plot the graph with the updated points
     lightAxis.plot(lightValueList,'r')
-
-    #lightAxis.set_ylim(ymin=0,ymax=(max(lightValueList)+200))
-
-    currentMinLightY = min(lightValueList) - 200
-    if currentMinLightY < 0:
-        currentMinLightY = 0
-        
-    lightAxis.set_ylim(ymin=currentMinLightY,ymax=(max(lightValueList)+200))
+    
+    if lightCount > 0:
+        lightAxis.set_ylim(ymin=currentLightLevel-200,ymax=currentLightLevel+200)
+    else:
+        currentMinLightY = min(lightValueList) - 200
+        if currentMinLightY < 0:
+            currentMinLightY = 0
+			
+        lightAxis.set_ylim(ymin=currentMinLightY,ymax=(max(lightValueList)+200))
 
 def plotWeeklyFootfall():
     """
