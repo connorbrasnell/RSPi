@@ -15,6 +15,8 @@ import pytesseract
 import re
 from imutils.video import VideoStream
 import time
+import requests
+import json
 
 class StockScanner:
 	def __init__(self, vs):
@@ -61,8 +63,10 @@ class StockScanner:
 		self.startBtn = tki.Button(self.root, text="START", width = 15, height= 5, bg="red", fg="white", font='"DejaVu Sans" 16 bold', command=self.startScanner)
 		self.startBtn.pack(padx=10,pady=10)
 		
-		self.nameLbl = tki.Label(self.root,textvariable=self.nameText,bg="white",fg='#482D60',font='"DejaVu Sans" 20 bold')
+		#self.nameLbl = tki.Label(self.root,textvariable=self.nameText,bg="white",fg='#482D60',font='"DejaVu Sans" 20 bold')
+		self.nameLbl = tki.Text(self.root,wrap='word',height='3',bd="0",selectborderwidth="0",borderwidth="0",highlightthickness="0",bg="white",fg='#482D60',font='"DejaVu Sans" 20 bold')
 		self.nameLbl.pack(padx=10,pady=10)
+		self.nameLbl.tag_configure("center", justify='center')
 		
 		self.codeLbl = tki.Label(self.root,textvariable=self.codeText,bg="white",fg='#482D60',font='"DejaVu Sans" 12')
 		self.codeLbl.pack(padx=10,pady=10)
@@ -175,6 +179,34 @@ class StockScanner:
 		if self.captureScreen == True:
                     self.panel.after(10,self.videoLoop)
 
+	def getApi(self, product_id):
+		
+		print("Testing: " + product_id)
+		
+		urlTitle = "https://st1-services-json.electrocomponents.com/service/ProductService/v01_01/JSON/Location/STORE_ID/GB_1/Product/" + str(product_id)
+		urlPrice = "https://st1-services-json.electrocomponents.com/service/ProductPriceService/v01_00/JSON/Location/COUNTRY_CODE/GB/Timezone/UTC/ProductPrices?ProductNumber=" + str(product_id)
+		urlStock = "https://st1-services-json.electrocomponents.com/service/ProductStockService/v01_00/JSON/Location/COUNTRY_CODE/GB/ProductStocks?ProductNumber=" + str(product_id)
+
+		headers={'Authorization':'Basic c3lzdGVtdGVzdGluZ2FwcGxpY2F0aW9uX3YxXzAtdXNlcjpwYXNzd29yZA==','Accept':'application/json','Cache-Control':'no-cache'}
+		
+		reqTitle = requests.get(urlTitle,headers=headers)
+		
+		try:
+			parsedTitle = json.loads(reqTitle.content.decode('utf-8'))
+		except:
+			return 0
+		
+		reqPrice = requests.get(urlPrice,headers=headers)
+		parsedPrice = json.loads(reqPrice.content.decode('utf-8'))
+		reqStock = requests.get(urlStock,headers=headers)
+		parsedStock = json.loads(reqStock.content.decode('utf-8'))
+		
+		productTitle = parsedTitle['GetProductResp']['Product']['ProductSummary']['LongDescription']
+		productPrice = parsedPrice['GetProductPricesResp']['ProductPriceCollection']['ProductPrice'][0]['CatalogueBreakPriceCollection']['BreakPrice'][0]['PriceNoTax']
+		productStock = parsedStock['GetProductStocksResp']['ProductStockCollection']['ProductStock'][0]['Quantity']
+		
+		return [productTitle, productPrice, productStock]
+
 	def takeSnapshot(self):
 
                 # load the example image and convert it to grayscale
@@ -219,24 +251,46 @@ class StockScanner:
                 
                 for i in range(6):
                     for j in range(len(matches[i])):
+                        matches[i][j] = matches[i][j].replace(' ','')
+                        matches[i][j] = matches[i][j].replace('-','')
                         checkOrder.append(matches[i][j])
                 
                 #print ("\nMatches: " + str(matches) + "\n")
                 print ("\nCheck Order: " + str(checkOrder) + "\n")
-##                
-##                for i in range(len(checkOrder)):
-##                    if getApi(checkOrder[i]) != '':
-##                        outputValues = values
-##                        break
-##                    
-##                if outputValues == '':
-##                    print("Please try again, no product found")
-##                else:
-##                    print(outputValues)
+                
+                apiResultFail = False
+                apiResult = 0
+                self.successfulID = ""
+                
+                for i in range(len(checkOrder)):
+                    apiResult = self.getApi(checkOrder[i])
+                    if apiResult != 0:
+                        successfulID = checkOrder[i]
+                        break
+                    
+                if apiResult == 0:
+                    apiResultFail = True
                 
                 #cv2.imshow("Output", gray)
                 
-                if len(checkOrder) > 0:
+                if apiResultFail == False and len(checkOrder) > 0:
+                    
+                    #print(apiResult[0])
+                    #print(str(successfulID))
+                    #print("£" + str(apiResult[1]))
+                    #print(str(apiResult[2]) + " available for NEXT DAY delivery!")
+                    
+                    #self.nameText.set(apiResult[0])
+                    
+                    self.nameLbl.delete(1.0, tki.END)
+                    self.nameLbl.insert(tki.END,apiResult[0])
+                    
+                    self.nameLbl.tag_add("center", "1.0", "end")
+                    
+                    self.codeText.set(str(successfulID))
+                    self.priceText.set("£" + str(apiResult[1]))
+                    self.availabilityText.set(str(apiResult[2]) + " available for NEXT DAY delivery!")
+                    
                     self.btn.pack_forget()
                     self.panel.pack_forget()
                     self.nameLbl.pack(padx=10,pady=10)
@@ -247,6 +301,7 @@ class StockScanner:
                     self.captureScreen = False
                     self.infoScreen = True
                 else:
+                    apiResultFail = False
                     self.cannotIdentify()
 
 	def scanMode(self):
