@@ -11,7 +11,7 @@ PIR_PIN = 21 # Pin the output of the PIR sensor is connected to
 # and stop any fluctuations accidently registering
 GPIO.setup(PIR_PIN,GPIO.IN,pull_up_down=GPIO.PUD_DOWN)
 
-#sleep(40) # Wait for the PIR sensor to warm up
+sleep(40) # Wait for the PIR sensor to warm up
 
 # Connection paramaters for the server running on the main Pi
 host = '192.168.1.157'
