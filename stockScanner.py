@@ -228,7 +228,8 @@ class StockScanner:
                 # the temporary file
                 text = pytesseract.image_to_string(Image.open(filename))
                 os.remove(filename)
-                #print(text)
+                print("Found:")
+                print(text)
                 
                 matches = []
                 checkOrder = []
@@ -242,14 +243,36 @@ class StockScanner:
                 matches.append(re.findall(r"\d{3}\s\d{4}",text))
                 matches.append(re.findall(r"\d{3}\s\d{3}",text))
                 
-                #print("Matched (XXX-XXXX): " + str(matches[0]))
-                #print("Matched (XXX-XXX): " + str(matches[1]))
-                #print("Matched (XXXXXXX): " + str(matches[2]))
-                #print("Matched (XXXXXX): " + str(matches[3]))
-                #print("Matched (XXX XXXX): " + str(matches[4]))
-                #print("Matched (XXX XXX): " + str(matches[5]))
+                print("Matched (XXX-XXXX): " + str(matches[0]))
+                print("Matched (XXX-XXX): " + str(matches[1]))
+                print("Matched (XXXXXXX): " + str(matches[2]))
+                print("Matched (XXXXXX): " + str(matches[3]))
+                print("Matched (XXX XXXX): " + str(matches[4]))
+                print("Matched (XXX XXX): " + str(matches[5]))
                 
-                for i in range(6):
+                print("Matches: " + str(len(matches)))
+                
+                listEmpty = True
+                
+                for i in range(len(matches)):
+                    if len(matches[i]) > 0:
+                        listEmpty = False
+                        break
+                
+                if listEmpty == True:
+					
+                    print("Found nothing, filtering text")
+					
+                    text = text.replace(' ','')
+                    text = text.replace('-','')
+                    text = text.replace('—','')
+                    
+                    print(text)
+					
+                    matches.append(re.findall(r"\d{7}",text))
+                    matches.append(re.findall(r"\d{6}",text))
+                
+                for i in range(len(matches)):
                     for j in range(len(matches[i])):
                         matches[i][j] = matches[i][j].replace(' ','')
                         matches[i][j] = matches[i][j].replace('-','')
