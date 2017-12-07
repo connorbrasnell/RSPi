@@ -228,16 +228,23 @@ def animateOutside(i):
     """
     global outsideTempList
 
-    observation = owm.weather_at_place('London,uk')
-    w = observation.get_weather()
-    currentTemperature = w.get_temperature('celsius')
+    currentTemperature = 0
+
+    try:
+        observation = owm.weather_at_place('London,GB')
+        w = observation.get_weather()
+        currentTemperature = round(w.get_temperature('celsius')['temp'],1)
+    except:
+	    print("Weather unavailable")
+	    if len(outsideTempList) > 0:
+	        currentTemperature = outsideTempList[len(outsideTempList)-1]
 
     if len(outsideTempList) >= 96:
         outsideTempList = outsideTempList[10:]
         
-    outsideTempList.append(round(currentTemperature['temp'],1))
+    outsideTempList.append(currentTemperature)
     
-    currentTemperature = str(round(currentTemperature['temp'],1)) + '\N{DEGREE SIGN}C' # Update the current temperature
+    currentTemperature = str(currentTemperature) + '\N{DEGREE SIGN}C' # Update the current temperature
 
     # Clear the graph
     outsideTempAxis.cla()
@@ -529,8 +536,8 @@ def updateFootfall():
 
     updateManagersCorner()
 
-    root.after(900000, updateFootfall) # Call the function every 15 minutes
-    #root.after(5000, updateFootfall)
+    #root.after(900000, updateFootfall) # Call the function every 15 minutes
+    root.after(5000, updateFootfall)
 
 def updateManagersCorner():
 
@@ -798,7 +805,7 @@ def getLiveFootfall():
                     continue
                 except socket.error as msg:
                     waiting_on_data = False
-                    print("Error when trying to receive: " + msg)
+                    print("Error when trying to receive: " + str(msg))
                 else:
                     data = data.decode('utf-8')
                     if data == '': # Means the connection had closed
@@ -930,7 +937,8 @@ startOfDayDB()
 updateFootfall() # Also calls updateManagersCorner()
 
 # Set the temperature/light graphs to be updated every second
-aniOutside = animation.FuncAnimation(fig, animateOutside, interval=900000)
+#aniOutside = animation.FuncAnimation(fig, animateOutside, interval=900000)
+aniOutside = animation.FuncAnimation(fig, animateOutside, interval=3000)
 aniInside = animation.FuncAnimation(fig, animateInside, interval=180000)
 aniLight = animation.FuncAnimation(fig, animateLight, interval=1000)
 
