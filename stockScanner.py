@@ -32,6 +32,8 @@ class StockScanner:
 		self.captureScreen = False
 		self.infoScreen = False
 		
+		self.initialSet = True
+		
 		self.pressTime = datetime.datetime.now()
 		
 		self.drawTryAgain = False
@@ -347,10 +349,16 @@ class StockScanner:
 		self.startBtn.pack_forget()
 		self.startLbl.pack_forget()
 		
+		if self.initialSet == False:
+			self.panel.pack(side="left", padx=10, pady=10)
+		else:
+			self.initialSet = False
+		
 		self.menuScreen = False
 		self.captureScreen = True
 		
 		self.videoLoop()
+		
 		self.btn.pack(side="right", padx=10,pady=10)
 		
 		self.panel.after(300000,self.cameraTimeout)
