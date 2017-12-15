@@ -66,11 +66,11 @@ DEC_LIGHT_BUTT = 9
 GPIO.setup(INC_LIGHT_BUTT, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 GPIO.setup(DEC_LIGHT_BUTT, GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-LED1 = 5
-LED2 = 6
+LED5 = 5
+LED4 = 6
 LED3 = 13
-LED4 = 19
-LED5 = 26
+LED2 = 19
+LED1 = 26
 GPIO.setup(LED1, GPIO.OUT)
 GPIO.setup(LED2, GPIO.OUT)
 GPIO.setup(LED3, GPIO.OUT)
@@ -348,14 +348,20 @@ def animateLight(i):
     # Plot the graph with the updated points
     lightAxis.plot(lightValueList,'r')
     
-    if lightCount > 0:
-        lightAxis.set_ylim(ymin=currentLightLevel-200,ymax=currentLightLevel+200)
-    else:
-        currentMinLightY = min(lightValueList) - 200
-        if currentMinLightY < 0:
-            currentMinLightY = 0
+    currentMinLightY = min(lightValueList) - 200
+    if currentMinLightY < 0:
+        currentMinLightY = 0
 			
-        lightAxis.set_ylim(ymin=currentMinLightY,ymax=(max(lightValueList)+200))
+    lightAxis.set_ylim(ymin=currentMinLightY,ymax=(max(lightValueList)+200))
+    
+    #if lightCount > 0:
+    #    lightAxis.set_ylim(ymin=currentLightLevel-200,ymax=currentLightLevel+200)
+    #else:
+    #    currentMinLightY = min(lightValueList) - 200
+    #    if currentMinLightY < 0:
+    #        currentMinLightY = 0
+	#		
+    #    lightAxis.set_ylim(ymin=currentMinLightY,ymax=(max(lightValueList)+200))
 
 def plotWeeklyFootfall():
     """
@@ -415,6 +421,7 @@ def updateFootfall():
 
     global customerCountInt
     global timePeriodCount
+    global currentDate
 
     data = open("data_files/daysFootfall.txt","r").read()
     splitData = data.split('\n')
@@ -430,6 +437,8 @@ def updateFootfall():
     textFileValues.append(splitData[6])
 
     textFileDate = splitData[6]
+    
+    currentDate = time.strftime('%Y-%m-%d')
 
     # Check the logic in the function comment
     if currentDate == textFileDate:
@@ -536,8 +545,8 @@ def updateFootfall():
 
     updateManagersCorner()
 
-    #root.after(900000, updateFootfall) # Call the function every 15 minutes
-    root.after(5000, updateFootfall)
+    root.after(900000, updateFootfall) # Call the function every 15 minutes
+    #root.after(5000, updateFootfall)
 
 def updateManagersCorner():
 
@@ -887,8 +896,8 @@ container.grid_columnconfigure(1, weight=1, minsize=720)
 for row in range(13):
     container.grid_rowconfigure(row, weight=1, minsize=60)
 
-original = PIL.Image.open("images/rs-components.png")
-resized = original.resize((514,427),PIL.Image.ANTIALIAS)
+original = PIL.Image.open("images/RSPi_Logo.png")
+resized = original.resize((579,344),PIL.Image.ANTIALIAS)
 photo = ImageTk.PhotoImage(resized)
 
 label = tk.Label(container, image=photo,bg='white')
@@ -937,8 +946,7 @@ startOfDayDB()
 updateFootfall() # Also calls updateManagersCorner()
 
 # Set the temperature/light graphs to be updated every second
-#aniOutside = animation.FuncAnimation(fig, animateOutside, interval=900000)
-aniOutside = animation.FuncAnimation(fig, animateOutside, interval=3000)
+aniOutside = animation.FuncAnimation(fig, animateOutside, interval=900000)
 aniInside = animation.FuncAnimation(fig, animateInside, interval=180000)
 aniLight = animation.FuncAnimation(fig, animateLight, interval=1000)
 
