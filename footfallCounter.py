@@ -31,7 +31,8 @@ connected = False
 # Sensitivity (how many changed pixels before capturing an image)
 # ForceCapture (whether to force an image to be captured every forceCaptureTime seconds)
 threshold = 10
-sensitivity = 3000
+sensitivity = 6000
+footfallCount = 0
 
 detected = False
 detectedCount = 0
@@ -137,8 +138,8 @@ try:
 
                 # Count changed pixels
                 changedPixels = 0
-                for x in range(0, 100):
-                        for y in  range(0, 75):
+                for x in range(0, 200):
+                        for y in  range(0, 150):
                                 # Just check green channel as it's the highest quality channel
                                 pixdiff = abs(buffer1[x,y][1] - buffer2[x,y][1])
                                 if pixdiff > threshold:
@@ -151,16 +152,18 @@ try:
                         if detectedCount == 1:
                                 if detected == False:
                                         detected = True
-                                        print("Motion Detected!")
+                                        footfallCount = footfallCount + 1
+                                        print("Motion Detected! " + str(footfallCount))
                                         #lastCapture = time.time()
                                         #saveImage(saveWidth, saveHeight, diskSpaceToReserve)
                                         detectedCount = 0
-                                        #sendNewCustomer()
+                                        sendNewCustomer()
                         elif detectedCount == 0:
                                 detectedCount = 1	
                 else:
                         detectedCount = 0
                         if detected == True:
+                                print("Zero")
                                 detected = False
 
                 # Swap comparison buffers
