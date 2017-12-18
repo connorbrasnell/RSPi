@@ -720,15 +720,16 @@ def increaseCustomerCount():
     
     if ignoreNext == False:
 
-	    customerCountInt = customerCountInt + 1
-	    customerCount.set(str(customerCountInt))
-
 	    baseTime = datetime.datetime.now().replace(hour=7, minute=0, second=0)
 	    currentTime = datetime.datetime.now()
 
 	    difference = ((currentTime - baseTime).total_seconds()) / 60
+	    
+	    if difference > 0 and difference < 660:
+	        customerCountInt = customerCountInt + 1
+	        customerCount.set(str(customerCountInt))
 
-	    if difference < 120:
+	    if difference < 120 and difference > 0:
 	        timePeriodCount[0] = timePeriodCount[0] + 1
 	    elif difference < 240:
 	        timePeriodCount[1] = timePeriodCount[1] + 1
