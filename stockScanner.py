@@ -193,16 +193,16 @@ class StockScanner:
 
 		headers={'Accept':'application/json','Cache-Control':'no-cache'}
 
-		reqTitle = requests.get(urlTitle,headers=headers,auth=(rspistockscannerapplication_v1_0-user,Welcome@1rspi))
+		reqTitle = requests.get(urlTitle,headers=headers,auth=("rspistockscannerapplication_v1_0-user","Welcome@1rspi"))
 
 		try:
 			parsedTitle = json.loads(reqTitle.content.decode('utf-8'))
 		except:
 			return 0
 
-		reqPrice = requests.get(urlPrice,headers=headers,auth=(rspistockscannerapplication_v1_0-user,Welcome@1rspi))
+		reqPrice = requests.get(urlPrice,headers=headers,auth=("rspistockscannerapplication_v1_0-user","Welcome@1rspi"))
 		parsedPrice = json.loads(reqPrice.content.decode('utf-8'))
-		reqStock = requests.get(urlStock,headers=headers,auth=(rspistockscannerapplication_v1_0-user,Welcome@1rspi))
+		reqStock = requests.get(urlStock,headers=headers,auth=("rspistockscannerapplication_v1_0-user","Welcome@1rspi"))
 		parsedStock = json.loads(reqStock.content.decode('utf-8'))
 
 		productTitle = parsedTitle['GetProductResp']['Product']['ProductSummary']['LongDescription']
