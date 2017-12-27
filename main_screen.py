@@ -482,16 +482,16 @@ def updateFootfall():
 
     else:
 
-        combined = textFileValues[0] + customerCountInt
-        textFileValues[0] = combined
-        customerCountInt = combined
+        #combined = textFileValues[0] + customerCountInt
+        #textFileValues[0] = combined
+        customerCountInt = textFileValues[0]
 
         customerCount.set(str(customerCountInt))
 
-        for i in range(len(textFileValues)-2):
-            combined = textFileValues[i+1] + timePeriodCount[i]
-            textFileValues[i+1] = combined
-            timePeriodCount[i] = combined
+        #for i in range(len(textFileValues)-2):
+            #combined = textFileValues[i+1] + timePeriodCount[i]
+            #textFileValues[i+1] = combined
+            #timePeriodCount[i] = combined
 
         customerCountInt = 0
         customerCount.set(str(customerCountInt))
