@@ -113,7 +113,7 @@ print("Completed socket setup")
 
 # Capture a small test image (for motion detection)
 def captureTestImage():
-        command = "raspistill -w %s -h %s -t 1 -roi 0.22,0,0.55,0.55 -e bmp -o -" % (200, 150)
+        command = "raspistill -w %s -h %s -n -t 1 -roi 0.22,0,0.55,0.55 -e bmp -o -" % (200, 150)
         imageData = BytesIO()
         imageData.write(subprocess.check_output(command, shell=True))
         imageData.seek(0)
