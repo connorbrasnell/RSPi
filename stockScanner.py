@@ -111,6 +111,8 @@ class StockScanner:
 		self.root.wm_protocol("WM_DELETE_WINDOW", self.onClose)
 		
 		self.cameraTimeout()
+		
+		self.startScanner()
 
 	def videoLoop(self):
 		# DISCLAIMER:
