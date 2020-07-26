@@ -52,7 +52,7 @@ SCOPES = 'https://www.googleapis.com/auth/gmail.send'
 CLIENT_SECRET_FILE = 'client_id.json'
 APPLICATION_NAME = 'Gmail API Python Send Email'
 
-temp_sensor = '/sys/bus/w1/devices/28-0000095cb34f/w1_slave'
+temp_sensor = '/sys/bus/w1/devices/28-0000095cb34f/w1_subordinate'
 
 GPIO.setmode(GPIO.BCM)
 

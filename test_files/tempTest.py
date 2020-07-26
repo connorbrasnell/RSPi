@@ -4,7 +4,7 @@ import time
 os.system('modprobe w1-gpio')
 os.system('modprobe w1-therm')
 
-temp_sensor = '/sys/bus/w1/devices/28-0000095cb34f/w1_slave'
+temp_sensor = '/sys/bus/w1/devices/28-0000095cb34f/w1_subordinate'
 
 def read_temperature():
     f = open(temp_sensor, 'r')
